@@ -1,0 +1,31 @@
+{
+  "name": "athletes-first-tracker-backend",
+  "version": "1.0.0",
+  "description": "Backend API for Athletes First Recruiting Materials Tracker",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js",
+    "init-db": "node -e \"require('./database/db').initialize().then(() => process.exit())\"",
+    "create-admin": "node create-admin.js"
+  },
+  "keywords": [
+    "recruiting",
+    "sports",
+    "tracking",
+    "nfl"
+  ],
+  "author": "Athletes First",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "sqlite3": "^5.1.6",
+    "axios": "^1.6.0",
+    "bcrypt": "^5.1.1",
+    "jsonwebtoken": "^9.0.2"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  }
+}
