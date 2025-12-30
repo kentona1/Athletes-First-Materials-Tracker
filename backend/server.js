@@ -55,15 +55,52 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+// Version check endpoint
+app.get('/api/version', async (req, res) => {
+  try {
+    // Check if new tables/columns exist
+    const hasTransfersTable = await db.get("SELECT name FROM sqlite_master WHERE type='table' AND name='player_transfers'");
+    const playerColumns = await db.query("PRAGMA table_info(players)");
+    const hasRecruitingFields = playerColumns.some(col => col.name === 'recruiting_stars');
+
+    res.json({
+      version: '2.0.0',
+      deployedAt: new Date().toISOString(),
+      features: {
+        transferPortalAPI: true,
+        recruitingData: hasRecruitingFields,
+        transferHistory: !!hasTransfersTable,
+        schoolAutocomplete: true,
+        schoolNormalization: true
+      },
+      endpoints: {
+        '/api/players/transfer-data': 'CFBD Transfer Portal API',
+        '/api/players/:id/transfers': 'Get player transfer history',
+        '/api/players/recruiting-data': 'CFBD Recruiting data',
+        '/api/schools/lookup': 'School normalization',
+        '/api/schools/search': 'School autocomplete'
+      }
+    });
+  } catch (error) {
+    res.json({
+      version: '2.0.0',
+      error: 'Could not verify database features',
+      message: error.message
+    });
+  }
+});
+
 // Root endpoint
 app.get('/', (req, res) => {
   res.json({
     message: 'Athletes First Recruiting Tracker API',
-    version: '1.0.0',
+    version: '2.0.0',
     endpoints: {
       players: '/api/players',
       materials: '/api/materials',
-      agents: '/api/agents'
+      agents: '/api/agents',
+      schools: '/api/schools',
+      version: '/api/version'
     }
   });
 });
