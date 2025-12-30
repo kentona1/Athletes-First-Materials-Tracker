@@ -22,7 +22,16 @@ function AddPlayer() {
     class_year: '',
     eligibility_year: new Date().getFullYear(),
     espn_id: '',
-    photo_url: ''
+    photo_url: '',
+    // Recruiting data
+    high_school: '',
+    recruiting_class_year: null,
+    recruiting_stars: null,
+    recruiting_rating: null,
+    recruiting_ranking: null,
+    recruiting_state_ranking: null,
+    recruiting_position_ranking: null,
+    original_commitment: ''
   });
 
   // Search ESPN for players
@@ -258,7 +267,16 @@ function AddPlayer() {
               class_year: classYear,
               eligibility_year: new Date().getFullYear(),
               espn_id: espnId || '',
-              photo_url: player.image || ''
+              photo_url: player.image || '',
+              // Recruiting data
+              high_school: recruitingData?.highSchool || '',
+              recruiting_class_year: recruitingData?.classYear || null,
+              recruiting_stars: recruitingData?.stars || null,
+              recruiting_rating: recruitingData?.rating || null,
+              recruiting_ranking: recruitingData?.ranking || null,
+              recruiting_state_ranking: null, // CFBD doesn't provide this
+              recruiting_position_ranking: null, // CFBD doesn't provide this
+              original_commitment: recruitingData?.school || normalizedSchoolName
             });
 
             setSelectedPlayer({
@@ -309,7 +327,16 @@ function AddPlayer() {
             class_year: '',
             eligibility_year: new Date().getFullYear(),
             espn_id: espnId || '',
-            photo_url: player.image || ''
+            photo_url: player.image || '',
+            // Recruiting data - empty for fallback
+            high_school: '',
+            recruiting_class_year: null,
+            recruiting_stars: null,
+            recruiting_rating: null,
+            recruiting_ranking: null,
+            recruiting_state_ranking: null,
+            recruiting_position_ranking: null,
+            original_commitment: normalizedSchool
           });
 
           setSelectedPlayer({
@@ -359,7 +386,16 @@ function AddPlayer() {
       class_year: '',
       eligibility_year: new Date().getFullYear(),
       espn_id: '',
-      photo_url: ''
+      photo_url: '',
+      // Recruiting data
+      high_school: '',
+      recruiting_class_year: null,
+      recruiting_stars: null,
+      recruiting_rating: null,
+      recruiting_ranking: null,
+      recruiting_state_ranking: null,
+      recruiting_position_ranking: null,
+      original_commitment: ''
     });
   };
 
