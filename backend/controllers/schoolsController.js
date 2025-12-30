@@ -182,6 +182,8 @@ class SchoolsController {
         });
       }
 
+      console.log('🔍 Looking up school:', name);
+
       // Try exact match first
       let school = await db.get(`
         SELECT * FROM schools
@@ -193,19 +195,54 @@ class SchoolsController {
           LOWER(alt_name3) = LOWER(?)
       `, [name, name, name, name, name]);
 
-      // If no exact match, try fuzzy match
-      if (!school) {
-        const searchTerm = `%${name}%`;
-        school = await db.get(`
-          SELECT * FROM schools
-          WHERE
-            LOWER(school) LIKE LOWER(?) OR
-            LOWER(abbreviation) LIKE LOWER(?) OR
-            LOWER(alt_name1) LIKE LOWER(?) OR
-            LOWER(alt_name2) LIKE LOWER(?) OR
-            LOWER(alt_name3) LIKE LOWER(?)
-          LIMIT 1
-        `, [searchTerm, searchTerm, searchTerm, searchTerm, searchTerm]);
+      if (school) {
+        console.log('✅ Exact match found:', school.school);
+        return res.json({ success: true, data: school });
+      }
+
+      // Try matching "School Mascot" pattern (e.g., "Georgia Bulldogs" -> "Georgia")
+      // Get all schools and check if input matches "school + mascot"
+      const allSchools = await db.query(`
+        SELECT * FROM schools
+        WHERE mascot IS NOT NULL AND mascot != ''
+      `);
+
+      const nameLower = name.toLowerCase().trim();
+      for (const s of allSchools) {
+        const schoolMascot = `${s.school} ${s.mascot}`.toLowerCase();
+        if (nameLower === schoolMascot) {
+          console.log('✅ Matched school+mascot pattern:', s.school);
+          return res.json({ success: true, data: s });
+        }
+      }
+
+      // Try finding schools where the input CONTAINS the school name
+      // (e.g., "Georgia Bulldogs" contains "Georgia")
+      for (const s of allSchools) {
+        const schoolLower = s.school.toLowerCase();
+        if (nameLower.includes(schoolLower) && schoolLower.length >= 4) {
+          console.log('✅ Input contains school name:', s.school);
+          return res.json({ success: true, data: s });
+        }
+      }
+
+      // Try standard fuzzy match
+      const searchTerm = `%${name}%`;
+      school = await db.get(`
+        SELECT * FROM schools
+        WHERE
+          LOWER(school) LIKE LOWER(?) OR
+          LOWER(abbreviation) LIKE LOWER(?) OR
+          LOWER(alt_name1) LIKE LOWER(?) OR
+          LOWER(alt_name2) LIKE LOWER(?) OR
+          LOWER(alt_name3) LIKE LOWER(?)
+        LIMIT 1
+      `, [searchTerm, searchTerm, searchTerm, searchTerm, searchTerm]);
+
+      if (school) {
+        console.log('✅ Fuzzy match found:', school.school);
+      } else {
+        console.log('⚠️ No match found for:', name);
       }
 
       res.json({ success: true, data: school || null });
