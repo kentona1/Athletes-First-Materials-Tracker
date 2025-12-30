@@ -152,9 +152,12 @@ class PlayersController {
       const result = await db.run(`
         INSERT INTO players (
           name, position, school, conference, hometown, state,
-          height, weight, class_year, eligibility_year, 
-          photo_url, espn_id, status
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          height, weight, class_year, eligibility_year,
+          photo_url, espn_id, status,
+          high_school, recruiting_class_year, recruiting_stars,
+          recruiting_rating, recruiting_ranking, recruiting_state_ranking,
+          recruiting_position_ranking, original_commitment
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `, [
         playerData.name,
         playerData.position,
@@ -168,7 +171,15 @@ class PlayersController {
         playerData.eligibility_year,
         playerData.photo_url,
         playerData.espn_id,
-        playerData.status || 'Active'
+        playerData.status || 'Active',
+        playerData.high_school || null,
+        playerData.recruiting_class_year || null,
+        playerData.recruiting_stars || null,
+        playerData.recruiting_rating || null,
+        playerData.recruiting_ranking || null,
+        playerData.recruiting_state_ranking || null,
+        playerData.recruiting_position_ranking || null,
+        playerData.original_commitment || null
       ]);
 
       res.json({

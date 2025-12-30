@@ -32,6 +32,17 @@ CREATE TABLE IF NOT EXISTS players (
     status TEXT DEFAULT 'Active', -- Active, Signed, Missed, Walked Away, Returned to School, No Meeting
     draft_round INTEGER,
     draft_year INTEGER,
+
+    -- High School Recruiting Info
+    high_school TEXT,
+    recruiting_class_year INTEGER, -- Year they were recruited (e.g., 2021)
+    recruiting_stars INTEGER, -- 3, 4, 5 star rating
+    recruiting_rating REAL, -- Composite rating (e.g., 0.8578)
+    recruiting_ranking INTEGER, -- National ranking
+    recruiting_state_ranking INTEGER, -- State ranking
+    recruiting_position_ranking INTEGER, -- Position ranking
+    original_commitment TEXT, -- School they originally committed to
+
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
@@ -53,6 +64,20 @@ CREATE TABLE IF NOT EXISTS schools (
     logo_dark TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Player Transfer History
+CREATE TABLE IF NOT EXISTS player_transfers (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    player_id INTEGER NOT NULL,
+    from_school TEXT, -- Previous school (NULL if from high school)
+    to_school TEXT NOT NULL, -- Destination school
+    transfer_season TEXT, -- e.g., "2023"
+    transfer_year INTEGER, -- Numeric year
+    eligibility_remaining TEXT, -- e.g., "3 years"
+    transfer_type TEXT, -- "Portal", "Walk-on", etc.
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE
 );
 
 -- Agents table
@@ -168,6 +193,8 @@ CREATE INDEX IF NOT EXISTS idx_players_status ON players(status);
 CREATE INDEX IF NOT EXISTS idx_schools_name ON schools(school);
 CREATE INDEX IF NOT EXISTS idx_schools_conference ON schools(conference);
 CREATE INDEX IF NOT EXISTS idx_schools_abbreviation ON schools(abbreviation);
+CREATE INDEX IF NOT EXISTS idx_transfers_player ON player_transfers(player_id);
+CREATE INDEX IF NOT EXISTS idx_transfers_year ON player_transfers(transfer_year);
 CREATE INDEX IF NOT EXISTS idx_materials_player ON player_materials(player_id);
 CREATE INDEX IF NOT EXISTS idx_materials_type ON player_materials(material_type_id);
 CREATE INDEX IF NOT EXISTS idx_materials_date ON player_materials(delivery_date);

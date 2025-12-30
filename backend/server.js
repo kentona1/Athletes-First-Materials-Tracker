@@ -91,6 +91,9 @@ async function startServer() {
   try {
     await db.initialize();
 
+    // Run database migrations
+    await runMigrations();
+
     // Auto-create default admin user if it doesn't exist
     await createDefaultAdminIfNeeded();
 
@@ -120,6 +123,18 @@ async function startServer() {
   } catch (error) {
     console.error('Failed to start server:', error);
     process.exit(1);
+  }
+}
+
+// Run database migrations
+async function runMigrations() {
+  try {
+    console.log('🔄 Running database migrations...');
+    const migrate = require('./database/migrations/add_recruiting_and_transfers');
+    await migrate();
+  } catch (error) {
+    console.error('⚠️  Migration error:', error.message);
+    // Don't fail startup if migration fails
   }
 }
 
