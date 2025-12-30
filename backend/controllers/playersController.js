@@ -245,6 +245,8 @@ class PlayersController {
         });
       }
 
+      console.log('🔍 Searching ESPN for:', name);
+
       // Use ESPN's search/autocomplete API
       const searchResponse = await axios.get(
         'https://site.web.api.espn.com/apis/search/v2',
@@ -261,19 +263,33 @@ class PlayersController {
         }
       );
 
+      console.log('📊 ESPN Response structure:', Object.keys(searchResponse.data));
+      console.log('📊 Full ESPN Response:', JSON.stringify(searchResponse.data, null, 2));
+
       // Extract player results
       const players = searchResponse.data?.results || [];
 
+      console.log('👥 Found', players.length, 'players');
+      if (players.length > 0) {
+        console.log('🏈 First player structure:', JSON.stringify(players[0], null, 2));
+      }
+
       // Format results for frontend
-      const formattedPlayers = players.map(player => ({
-        id: player.id,
-        name: player.displayName || player.name,
-        position: player.position?.abbreviation,
-        school: player.team?.displayName || player.team?.name,
-        league: player.league?.abbreviation,
-        image: player.image?.url,
-        url: player.url
-      }));
+      const formattedPlayers = players.map(player => {
+        const formatted = {
+          id: player.id,
+          name: player.displayName || player.name || player.text,
+          position: player.position?.abbreviation || player.position,
+          school: player.team?.displayName || player.team?.name || player.team,
+          league: player.league?.abbreviation || player.league,
+          image: player.image?.url || player.imageUrl,
+          url: player.url || player.link
+        };
+        console.log('✨ Formatted:', formatted);
+        return formatted;
+      });
+
+      console.log('✅ Returning', formattedPlayers.length, 'formatted players');
 
       res.json({ success: true, data: formattedPlayers });
     } catch (error) {
