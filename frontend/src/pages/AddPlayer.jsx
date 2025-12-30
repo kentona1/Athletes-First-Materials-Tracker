@@ -126,18 +126,42 @@ function AddPlayer() {
             }
           }
 
-          // Try to find exact match by school
-          let cfbdPlayer = cfbdPlayers.find(p =>
-            p.school?.toLowerCase() === player.school?.toLowerCase()
+          // Try to find match by school
+          let cfbdPlayer = null;
+          const espnSchool = player.school?.toLowerCase() || '';
+
+          // First, try exact school match
+          cfbdPlayer = cfbdPlayers.find(p =>
+            p.school?.toLowerCase() === espnSchool
           );
 
-          // If no exact school match, use first result
+          // If no exact match, try partial school match
+          if (!cfbdPlayer && espnSchool) {
+            cfbdPlayer = cfbdPlayers.find(p => {
+              const cfbdSchool = p.school?.toLowerCase() || '';
+              // Match if either contains the other (e.g., "Penn State" matches "Penn State Nittany Lions")
+              return cfbdSchool.includes(espnSchool) || espnSchool.includes(cfbdSchool);
+            });
+          }
+
+          // If still no match and we used fuzzy matching (last name only), don't auto-fill
           if (!cfbdPlayer && cfbdPlayers.length > 0) {
-            cfbdPlayer = cfbdPlayers[0];
+            console.warn(`⚠️ Found ${cfbdPlayers.length} CFBD matches but none match school "${player.school}"`);
+            console.warn('   Please verify player information manually');
+            // Don't use potentially wrong data - let user fill in manually
+            cfbdPlayer = null;
           }
 
           if (cfbdPlayer) {
             console.log('✅ Found CFBD data:', cfbdPlayer);
+
+            // Verify school match for safety
+            const schoolMatch = cfbdPlayer.school?.toLowerCase().includes(espnSchool) ||
+                               espnSchool.includes(cfbdPlayer.school?.toLowerCase() || '');
+            if (!schoolMatch) {
+              console.warn('⚠️ School mismatch detected!');
+              console.warn(`   ESPN: ${player.school}, CFBD: ${cfbdPlayer.school}`);
+            }
 
             // If hometown is empty, try recruiting data for more details
             let recruitingData = null;
