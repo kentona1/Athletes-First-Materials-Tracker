@@ -577,23 +577,50 @@ class PlayersController {
 
       console.log('🎓 Searching CFBD recruiting for:', name, 'team:', team, 'year:', year);
 
-      // Search recruiting data by team or year
-      const params = {};
-      if (team) params.team = team;
-      if (year) params.year = year;
+      let allRecruits = [];
 
-      const response = await axios.get(
-        'https://api.collegefootballdata.com/recruiting/players',
-        {
-          params,
-          headers: {
-            'Authorization': `Bearer ${apiKey}`
+      // Try searching by team first
+      if (team) {
+        try {
+          const response = await axios.get(
+            'https://api.collegefootballdata.com/recruiting/players',
+            {
+              params: { team },
+              headers: { 'Authorization': `Bearer ${apiKey}` }
+            }
+          );
+          allRecruits = response.data || [];
+          console.log('📊 Team search returned', allRecruits.length, 'total recruits');
+        } catch (teamError) {
+          console.warn('⚠️ Team search failed:', teamError.message);
+        }
+      }
+
+      // If team search returned nothing, try recent years
+      if (allRecruits.length === 0) {
+        console.log('🔄 Trying year-based search for recent recruiting classes...');
+        const currentYear = new Date().getFullYear();
+        const yearsToTry = [currentYear, currentYear - 1, currentYear - 2, currentYear - 3, currentYear - 4, currentYear - 5];
+
+        for (const searchYear of yearsToTry) {
+          try {
+            console.log(`  Trying year ${searchYear}...`);
+            const response = await axios.get(
+              'https://api.collegefootballdata.com/recruiting/players',
+              {
+                params: { year: searchYear, team: team || undefined },
+                headers: { 'Authorization': `Bearer ${apiKey}` }
+              }
+            );
+            const yearRecruits = response.data || [];
+            allRecruits = allRecruits.concat(yearRecruits);
+            console.log(`  Year ${searchYear}: found ${yearRecruits.length} recruits`);
+          } catch (yearError) {
+            console.warn(`  Year ${searchYear} failed:`, yearError.message);
           }
         }
-      );
-
-      const allRecruits = response.data || [];
-      console.log('📊 CFBD recruiting returned', allRecruits.length, 'total recruits');
+        console.log('📊 Total recruits from all years:', allRecruits.length);
+      }
 
       // Find matching player by name
       const nameToMatch = name.toLowerCase().trim();
