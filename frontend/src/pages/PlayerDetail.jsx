@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from '../api/axios';
+import { formatHeight } from '../utils/formatters';
 import '../styles/PlayerDetail.css';
 
 function PlayerDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [player, setPlayer] = useState(null);
+  const [schoolData, setSchoolData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showMaterialForm, setShowMaterialForm] = useState(false);
   const [materialTypes, setMaterialTypes] = useState([]);
@@ -32,7 +34,23 @@ function PlayerDetail() {
   const fetchPlayerDetails = async () => {
     try {
       const response = await axios.get(`/api/players/${id}`);
-      setPlayer(response.data.data);
+      const playerData = response.data.data;
+      setPlayer(playerData);
+
+      // Fetch school data for logo
+      if (playerData.school) {
+        try {
+          const schoolResponse = await axios.get('/api/schools/lookup', {
+            params: { name: playerData.school }
+          });
+          if (schoolResponse.data.data) {
+            setSchoolData(schoolResponse.data.data);
+          }
+        } catch (schoolError) {
+          console.warn('Could not fetch school data:', schoolError);
+        }
+      }
+
       setLoading(false);
     } catch (error) {
       console.error('Error fetching player:', error);
@@ -112,7 +130,16 @@ function PlayerDetail() {
           <div className="player-title">
             <h1>{player.name}</h1>
             <p className="player-subtitle">
-              {player.position} • {player.school} ({player.conference})
+              {player.position} •{' '}
+              {schoolData?.logo && (
+                <img
+                  src={schoolData.logo}
+                  alt={player.school}
+                  className="school-logo-inline"
+                  style={{ width: '20px', height: '20px', verticalAlign: 'middle', marginRight: '5px' }}
+                />
+              )}
+              {player.school} ({player.conference})
             </p>
           </div>
         </div>
@@ -128,7 +155,7 @@ function PlayerDetail() {
           </div>
           <div className="stat-item">
             <label>Height</label>
-            <span>{player.height || '-'}</span>
+            <span>{formatHeight(player.height) || player.height || '-'}</span>
           </div>
           <div className="stat-item">
             <label>Weight</label>

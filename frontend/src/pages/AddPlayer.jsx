@@ -88,15 +88,43 @@ function AddPlayer() {
       } catch (detailError) {
         console.warn('⚠️ ESPN details API failed, trying CFBD:', detailError.message);
 
-        // Try to get detailed data from CFBD
+        // Try to get detailed data from CFBD with fuzzy name matching
         try {
+          let cfbdPlayers = [];
+
+          // Try full name first
           console.log('🔍 Searching CFBD for:', player.name);
-          const cfbdResponse = await axios.get('/api/players/search-cfbd', {
+          let cfbdResponse = await axios.get('/api/players/search-cfbd', {
             params: { name: player.name }
           });
+          cfbdPlayers = cfbdResponse.data.data || [];
+          console.log('📊 Full name search returned', cfbdPlayers.length, 'players');
 
-          const cfbdPlayers = cfbdResponse.data.data || [];
-          console.log('📊 CFBD returned', cfbdPlayers.length, 'players');
+          // If no results, try name variations
+          if (cfbdPlayers.length === 0) {
+            const nameParts = player.name.split(' ');
+            if (nameParts.length > 2) {
+              // Try removing first part (e.g., "Olaivavega Ioane" → "Vega Ioane")
+              const shortName = nameParts.slice(1).join(' ');
+              console.log('🔍 Trying shortened name:', shortName);
+              cfbdResponse = await axios.get('/api/players/search-cfbd', {
+                params: { name: shortName }
+              });
+              cfbdPlayers = cfbdResponse.data.data || [];
+              console.log('📊 Shortened name search returned', cfbdPlayers.length, 'players');
+            }
+
+            // If still no results, try just last name
+            if (cfbdPlayers.length === 0 && nameParts.length >= 2) {
+              const lastName = nameParts[nameParts.length - 1];
+              console.log('🔍 Trying last name only:', lastName);
+              cfbdResponse = await axios.get('/api/players/search-cfbd', {
+                params: { name: lastName }
+              });
+              cfbdPlayers = cfbdResponse.data.data || [];
+              console.log('📊 Last name search returned', cfbdPlayers.length, 'players');
+            }
+          }
 
           // Try to find exact match by school
           let cfbdPlayer = cfbdPlayers.find(p =>
@@ -140,8 +168,26 @@ function AddPlayer() {
             // Merge ESPN + CFBD + Recruiting data
             const hometown = recruitingData?.hometown || cfbdPlayer.hometown || '';
             const state = recruitingData?.state || cfbdPlayer.state || '';
-            const classYear = recruitingData?.classYear || '';
+            const recruitingYear = recruitingData?.classYear || '';
             const schoolName = cfbdPlayer.school || player.school || '';
+
+            // Calculate class year from recruiting year
+            let classYear = '';
+            if (recruitingYear) {
+              const currentYear = new Date().getFullYear();
+              const yearsInCollege = currentYear - recruitingYear + 1;
+
+              // Map years to class standings (default progression, user can override)
+              const classMap = {
+                1: 'Freshman',
+                2: 'Sophomore',
+                3: 'Junior',
+                4: 'Senior',
+                5: 'Fifth Year'
+              };
+              classYear = classMap[yearsInCollege] || '';
+              console.log(`📅 Recruiting year: ${recruitingYear}, Years in college: ${yearsInCollege}, Class: ${classYear}`);
+            }
 
             // Look up school in database to get conference
             let conference = '';
