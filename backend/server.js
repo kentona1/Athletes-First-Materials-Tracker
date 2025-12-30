@@ -94,6 +94,9 @@ async function startServer() {
     // Auto-create default admin user if it doesn't exist
     await createDefaultAdminIfNeeded();
 
+    // Auto-import schools data if table is empty
+    await importSchoolsIfNeeded();
+
     app.listen(PORT, () => {
       console.log(`
 ╔═══════════════════════════════════════════════════════╗
@@ -148,6 +151,26 @@ async function createDefaultAdminIfNeeded() {
     console.log('  ⚠️  IMPORTANT: Change this password after first login!');
   } catch (error) {
     console.error('Error creating admin user:', error);
+  }
+}
+
+// Auto-import schools data if needed
+async function importSchoolsIfNeeded() {
+  try {
+    const count = await db.get('SELECT COUNT(*) as count FROM schools');
+
+    if (count.count > 0) {
+      console.log(`✓ Schools table already populated (${count.count} schools)`);
+      return;
+    }
+
+    console.log('📚 Schools table is empty, importing data...');
+    const importSchools = require('./database/import-schools');
+    await importSchools(true); // skipInit=true since db is already initialized
+    console.log('✅ Schools import complete!');
+  } catch (error) {
+    console.error('⚠️  Error importing schools:', error.message);
+    console.error('   Schools functionality may be limited');
   }
 }
 

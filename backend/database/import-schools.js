@@ -2,12 +2,14 @@ const fs = require('fs');
 const path = require('path');
 const db = require('./db');
 
-async function importSchools() {
+async function importSchools(skipInit = false) {
   try {
     console.log('📚 Starting schools import...');
 
-    // Initialize database
-    await db.initialize();
+    // Initialize database (skip if already initialized by server)
+    if (!skipInit) {
+      await db.initialize();
+    }
 
     // Read CSV file
     const csvPath = path.join(__dirname, '../data/schools.csv');
@@ -82,7 +84,10 @@ async function importSchools() {
     console.error('❌ Import failed:', error);
     throw error;
   } finally {
-    await db.close();
+    // Only close db if we initialized it ourselves
+    if (!skipInit) {
+      await db.close();
+    }
   }
 }
 
