@@ -9,6 +9,7 @@ function AddPlayer() {
   const [searchResults, setSearchResults] = useState([]);
   const [searching, setSearching] = useState(false);
   const [selectedPlayer, setSelectedPlayer] = useState(null);
+  const [transferData, setTransferData] = useState([]);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -209,6 +210,27 @@ function AddPlayer() {
               }
             }
 
+            // Fetch transfer portal data
+            try {
+              console.log('🔄 Fetching transfer portal data...');
+              const transferResponse = await axios.get('/api/players/transfer-data', {
+                params: { name: player.name }
+              });
+
+              const transfers = transferResponse.data.data || [];
+              console.log('📊 Transfer portal returned', transfers.length, 'results');
+
+              if (transfers.length > 0) {
+                setTransferData(transfers);
+                console.log('✅ Found transfer history:', transfers);
+              } else {
+                setTransferData([]);
+              }
+            } catch (transferError) {
+              console.warn('⚠️ Transfer data fetch failed:', transferError.message);
+              setTransferData([]);
+            }
+
             // Merge ESPN + CFBD + Recruiting data
             const hometown = recruitingData?.hometown || cfbdPlayer.hometown || '';
             const state = recruitingData?.state || cfbdPlayer.state || '';
@@ -359,9 +381,33 @@ function AddPlayer() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
+      // Create player
       const response = await axios.post('/api/players', formData);
+      const playerId = response.data.data.id;
+
+      // Save transfer history if any
+      if (transferData.length > 0) {
+        console.log(`💾 Saving ${transferData.length} transfer records...`);
+        for (const transfer of transferData) {
+          try {
+            await axios.post('/api/players/transfers', {
+              player_id: playerId,
+              from_school: transfer.fromSchool,
+              to_school: transfer.toSchool,
+              transfer_season: transfer.transferSeason,
+              transfer_year: transfer.transferYear,
+              eligibility_remaining: transfer.eligibilityRemaining,
+              transfer_type: transfer.transferType || 'Portal'
+            });
+          } catch (transferError) {
+            console.warn('⚠️ Failed to save transfer:', transferError.message);
+          }
+        }
+        console.log('✅ Transfer history saved');
+      }
+
       alert('Player added successfully!');
-      navigate(`/players/${response.data.data.id}`);
+      navigate(`/players/${playerId}`);
     } catch (error) {
       console.error('Error adding player:', error);
       alert('Error adding player');
