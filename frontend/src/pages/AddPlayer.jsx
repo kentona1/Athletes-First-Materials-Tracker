@@ -223,8 +223,9 @@ function AddPlayer() {
               console.log(`📅 Recruiting year: ${recruitingYear}, Years in college: ${yearsInCollege}, Class: ${classYear}`);
             }
 
-            // Look up school in database to get conference
+            // Look up school in database to get normalized name and conference
             let conference = '';
+            let normalizedSchoolName = schoolName; // Default to raw name if lookup fails
             if (schoolName) {
               try {
                 console.log('🏫 Looking up school in database:', schoolName);
@@ -233,8 +234,11 @@ function AddPlayer() {
                 });
 
                 if (schoolLookup.data.data) {
+                  // Use canonical school name from database for consistency
+                  normalizedSchoolName = schoolLookup.data.data.school;
                   conference = schoolLookup.data.data.conference || '';
-                  console.log('✅ Found school conference:', conference);
+                  console.log('✅ Normalized school name:', normalizedSchoolName);
+                  console.log('✅ Conference:', conference);
                 }
               } catch (lookupError) {
                 console.warn('⚠️ School lookup failed:', lookupError.message);
@@ -244,7 +248,7 @@ function AddPlayer() {
             setFormData({
               name: player.name || '',
               position: cfbdPlayer.position || player.position || '',
-              school: schoolName,
+              school: normalizedSchoolName,
               conference: conference,
               hometown: hometown,
               state: state,
@@ -272,12 +276,31 @@ function AddPlayer() {
         } catch (cfbdError) {
           console.warn('⚠️ CFBD also failed, using ESPN search data only:', cfbdError.message);
 
-          // Final fallback: use ESPN search data only
+          // Final fallback: use ESPN search data only, but normalize school name
+          let normalizedSchool = player.school || '';
+          let fallbackConference = '';
+
+          // Try to normalize school name even in fallback
+          if (player.school) {
+            try {
+              const schoolLookup = await axios.get('/api/schools/lookup', {
+                params: { name: player.school }
+              });
+              if (schoolLookup.data.data) {
+                normalizedSchool = schoolLookup.data.data.school;
+                fallbackConference = schoolLookup.data.data.conference || '';
+                console.log('✅ Normalized ESPN school:', normalizedSchool);
+              }
+            } catch (lookupError) {
+              console.warn('⚠️ School normalization failed, using raw ESPN name');
+            }
+          }
+
           setFormData({
             name: player.name || '',
             position: player.position || '',
-            school: player.school || '',
-            conference: '',
+            school: normalizedSchool,
+            conference: fallbackConference,
             hometown: '',
             state: '',
             height: '',
@@ -290,7 +313,7 @@ function AddPlayer() {
 
           setSelectedPlayer({
             name: player.name,
-            school: player.school,
+            school: normalizedSchool,
             photo_url: player.image,
             espn_id: espnId
           });
