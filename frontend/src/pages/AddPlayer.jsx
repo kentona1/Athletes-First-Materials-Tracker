@@ -115,11 +115,13 @@ function AddPlayer() {
             let recruitingData = null;
             if (!cfbdPlayer.hometown) {
               try {
-                console.log('🎓 Hometown empty, trying recruiting data for:', player.name, player.school);
+                // Use CFBD school name (e.g., "Florida") not ESPN name (e.g., "Florida Gators")
+                const teamName = cfbdPlayer.school || player.school;
+                console.log('🎓 Hometown empty, trying recruiting data for:', player.name, teamName);
                 const recruitResponse = await axios.get('/api/players/recruiting-data', {
                   params: {
                     name: player.name,
-                    team: player.school
+                    team: teamName
                   }
                 });
 
