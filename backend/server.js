@@ -7,6 +7,7 @@ const playersRoutes = require('./routes/players');
 const materialsRoutes = require('./routes/materials');
 const agentsRoutes = require('./routes/agents');
 const authRoutes = require('./routes/auth');
+const schoolsRoutes = require('./routes/schools');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -47,6 +48,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/players', playersRoutes);
 app.use('/api/materials', materialsRoutes);
 app.use('/api/agents', agentsRoutes);
+app.use('/api/schools', schoolsRoutes);
 
 // Health check
 app.get('/health', (req, res) => {

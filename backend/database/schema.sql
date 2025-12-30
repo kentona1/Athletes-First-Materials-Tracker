@@ -36,6 +36,25 @@ CREATE TABLE IF NOT EXISTS players (
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Schools table - normalized school data from ESPN
+CREATE TABLE IF NOT EXISTS schools (
+    id INTEGER PRIMARY KEY,
+    school TEXT NOT NULL,
+    mascot TEXT,
+    abbreviation TEXT,
+    alt_name1 TEXT,
+    alt_name2 TEXT,
+    alt_name3 TEXT,
+    conference TEXT,
+    division TEXT,
+    color TEXT,
+    alt_color TEXT,
+    logo TEXT,
+    logo_dark TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Agents table
 CREATE TABLE IF NOT EXISTS agents (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -142,15 +161,18 @@ CREATE TABLE IF NOT EXISTS player_tags (
 );
 
 -- Indexes for performance
-CREATE INDEX idx_players_name ON players(name);
-CREATE INDEX idx_players_school ON players(school);
-CREATE INDEX idx_players_position ON players(position);
-CREATE INDEX idx_players_status ON players(status);
-CREATE INDEX idx_materials_player ON player_materials(player_id);
-CREATE INDEX idx_materials_type ON player_materials(material_type_id);
-CREATE INDEX idx_materials_date ON player_materials(delivery_date);
-CREATE INDEX idx_contacts_player ON player_contacts(player_id);
-CREATE INDEX idx_contacts_date ON player_contacts(contact_date);
+CREATE INDEX IF NOT EXISTS idx_players_name ON players(name);
+CREATE INDEX IF NOT EXISTS idx_players_school ON players(school);
+CREATE INDEX IF NOT EXISTS idx_players_position ON players(position);
+CREATE INDEX IF NOT EXISTS idx_players_status ON players(status);
+CREATE INDEX IF NOT EXISTS idx_schools_name ON schools(school);
+CREATE INDEX IF NOT EXISTS idx_schools_conference ON schools(conference);
+CREATE INDEX IF NOT EXISTS idx_schools_abbreviation ON schools(abbreviation);
+CREATE INDEX IF NOT EXISTS idx_materials_player ON player_materials(player_id);
+CREATE INDEX IF NOT EXISTS idx_materials_type ON player_materials(material_type_id);
+CREATE INDEX IF NOT EXISTS idx_materials_date ON player_materials(delivery_date);
+CREATE INDEX IF NOT EXISTS idx_contacts_player ON player_contacts(player_id);
+CREATE INDEX IF NOT EXISTS idx_contacts_date ON player_contacts(contact_date);
 
 -- Insert default agents from your spreadsheet
 INSERT OR IGNORE INTO agents (name) VALUES 

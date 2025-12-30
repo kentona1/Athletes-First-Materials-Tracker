@@ -141,12 +141,31 @@ function AddPlayer() {
             const hometown = recruitingData?.hometown || cfbdPlayer.hometown || '';
             const state = recruitingData?.state || cfbdPlayer.state || '';
             const classYear = recruitingData?.classYear || '';
+            const schoolName = cfbdPlayer.school || player.school || '';
+
+            // Look up school in database to get conference
+            let conference = '';
+            if (schoolName) {
+              try {
+                console.log('🏫 Looking up school in database:', schoolName);
+                const schoolLookup = await axios.get('/api/schools/lookup', {
+                  params: { name: schoolName }
+                });
+
+                if (schoolLookup.data.data) {
+                  conference = schoolLookup.data.data.conference || '';
+                  console.log('✅ Found school conference:', conference);
+                }
+              } catch (lookupError) {
+                console.warn('⚠️ School lookup failed:', lookupError.message);
+              }
+            }
 
             setFormData({
               name: player.name || '',
               position: cfbdPlayer.position || player.position || '',
-              school: cfbdPlayer.school || player.school || '',
-              conference: '', // Still need to add this
+              school: schoolName,
+              conference: conference,
               hometown: hometown,
               state: state,
               height: cfbdPlayer.height || '',
