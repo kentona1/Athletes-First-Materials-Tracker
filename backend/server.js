@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const bcrypt = require('bcrypt');
 const db = require('./database/db');
 
 const playersRoutes = require('./routes/players');
@@ -87,7 +88,10 @@ app.use((req, res) => {
 async function startServer() {
   try {
     await db.initialize();
-    
+
+    // Auto-create default admin user if it doesn't exist
+    await createDefaultAdminIfNeeded();
+
     app.listen(PORT, () => {
       console.log(`
 ╔═══════════════════════════════════════════════════════╗
@@ -111,6 +115,37 @@ async function startServer() {
   } catch (error) {
     console.error('Failed to start server:', error);
     process.exit(1);
+  }
+}
+
+// Create default admin user if it doesn't exist
+async function createDefaultAdminIfNeeded() {
+  try {
+    const existingAdmin = await db.get(
+      'SELECT id FROM users WHERE username = ?',
+      ['admin']
+    );
+
+    if (existingAdmin) {
+      console.log('✓ Admin user already exists');
+      return;
+    }
+
+    // Create admin user
+    const password = 'admin123';
+    const hash = await bcrypt.hash(password, 10);
+
+    await db.run(`
+      INSERT INTO users (username, email, password_hash, role)
+      VALUES (?, ?, ?, ?)
+    `, ['admin', 'admin@athletesfirst.com', hash, 'admin']);
+
+    console.log('✓ Default admin user created!');
+    console.log('  Username: admin');
+    console.log('  Password: admin123');
+    console.log('  ⚠️  IMPORTANT: Change this password after first login!');
+  } catch (error) {
+    console.error('Error creating admin user:', error);
   }
 }
 
