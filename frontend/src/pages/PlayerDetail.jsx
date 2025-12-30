@@ -340,22 +340,24 @@ function PlayerDetail() {
               )}
 
               {player.transfers && player.transfers.length > 0 && (
-                player.transfers.map((transfer, idx) => (
-                  <React.Fragment key={idx}>
-                    <div className="progression-arrow">→</div>
-                    <div className="progression-step">
-                      <div className="step-label">{transfer.transfer_year}</div>
-                      {progressionLogos[transfer.to_school] && (
-                        <img
-                          src={progressionLogos[transfer.to_school]}
-                          alt={transfer.to_school}
-                          className="progression-logo"
-                        />
-                      )}
-                      <div className="step-school">{transfer.to_school}</div>
-                    </div>
-                  </React.Fragment>
-                ))
+                [...player.transfers]
+                  .sort((a, b) => a.transfer_year - b.transfer_year)
+                  .map((transfer, idx) => (
+                    <React.Fragment key={idx}>
+                      <div className="progression-arrow">→</div>
+                      <div className="progression-step">
+                        <div className="step-label">{transfer.transfer_year}</div>
+                        {progressionLogos[transfer.to_school] && (
+                          <img
+                            src={progressionLogos[transfer.to_school]}
+                            alt={transfer.to_school}
+                            className="progression-logo"
+                          />
+                        )}
+                        <div className="step-school">{transfer.to_school}</div>
+                      </div>
+                    </React.Fragment>
+                  ))
               )}
 
               {(!player.transfers || player.transfers.length === 0) && player.school !== player.original_commitment && (
