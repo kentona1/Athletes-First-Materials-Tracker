@@ -749,14 +749,14 @@ class PlayersController {
         yearsToTry = [parseInt(year)];
         console.log('📅 Using specific year:', year);
       } else if (recruitingYear) {
-        // If recruiting year available, search forward from signing year (covers college career)
+        // If recruiting year available, search forward from signing year (covers college career + transfer portal)
         const startYear = parseInt(recruitingYear);
-        yearsToTry = [startYear, startYear + 1, startYear + 2, startYear + 3, startYear + 4, startYear + 5];
-        console.log('📅 Searching from recruiting year forward:', yearsToTry);
+        yearsToTry = [startYear, startYear + 1, startYear + 2, startYear + 3, startYear + 4, startYear + 5, startYear + 6];
+        console.log('📅 Searching from recruiting year forward (7 years):', yearsToTry);
       } else {
         // Fall back to searching backwards from current year
-        yearsToTry = [currentYear, currentYear - 1, currentYear - 2, currentYear - 3, currentYear - 4, currentYear - 5];
-        console.log('📅 Searching backwards from current year:', yearsToTry);
+        yearsToTry = [currentYear, currentYear - 1, currentYear - 2, currentYear - 3, currentYear - 4, currentYear - 5, currentYear - 6];
+        console.log('📅 Searching backwards from current year (7 years):', yearsToTry);
       }
 
       let allTransfers = [];
