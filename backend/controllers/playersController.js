@@ -604,7 +604,7 @@ class PlayersController {
 
         for (const searchYear of yearsToTry) {
           try {
-            console.log(`  Trying year ${searchYear}...`);
+            console.log(`  Trying year ${searchYear} with team filter...`);
             const response = await axios.get(
               'https://api.collegefootballdata.com/recruiting/players',
               {
@@ -624,12 +624,48 @@ class PlayersController {
 
       // Find matching player by name
       const nameToMatch = name.toLowerCase().trim();
-      const matchingRecruits = allRecruits.filter(recruit => {
+      let matchingRecruits = allRecruits.filter(recruit => {
         const recruitName = recruit.name?.toLowerCase().trim() || '';
         return recruitName.includes(nameToMatch) || nameToMatch.includes(recruitName);
       });
 
       console.log('✅ Found', matchingRecruits.length, 'matching recruits');
+
+      // If no matches found with team filter, try searching without team (for transfer players)
+      if (matchingRecruits.length === 0 && team) {
+        console.log('🔄 No matches with team filter. Trying without team for transfer players...');
+        const currentYear = new Date().getFullYear();
+        const yearsToTry = [currentYear, currentYear - 1, currentYear - 2, currentYear - 3, currentYear - 4, currentYear - 5, currentYear - 6];
+
+        allRecruits = [];
+        for (const searchYear of yearsToTry) {
+          try {
+            console.log(`  Trying year ${searchYear} without team filter...`);
+            const response = await axios.get(
+              'https://api.collegefootballdata.com/recruiting/players',
+              {
+                params: { year: searchYear },
+                headers: { 'Authorization': `Bearer ${apiKey}` }
+              }
+            );
+            const yearRecruits = response.data || [];
+            allRecruits = allRecruits.concat(yearRecruits);
+            console.log(`  Year ${searchYear}: found ${yearRecruits.length} recruits`);
+          } catch (yearError) {
+            console.warn(`  Year ${searchYear} failed:`, yearError.message);
+          }
+        }
+
+        console.log('📊 Total recruits from all years (no team filter):', allRecruits.length);
+
+        // Search again by name only
+        matchingRecruits = allRecruits.filter(recruit => {
+          const recruitName = recruit.name?.toLowerCase().trim() || '';
+          return recruitName.includes(nameToMatch) || nameToMatch.includes(recruitName);
+        });
+
+        console.log('✅ Found', matchingRecruits.length, 'matching recruits (transfer search)');
+      }
 
       if (matchingRecruits.length > 0) {
         // Format recruiting data
