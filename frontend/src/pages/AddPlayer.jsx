@@ -91,7 +91,7 @@ function AddPlayer() {
         // Fall back to search result data
         setFormData({
           name: player.name || '',
-          position: '', // Not in search results
+          position: player.position || '', // Available in search results
           school: player.school || '',
           conference: '', // Not in search results
           hometown: '', // Not in search results
