@@ -785,18 +785,26 @@ class PlayersController {
 
       console.log('📊 Found', matchingTransfers.length, 'exact name matches');
 
-      // If we have a current school, verify the transfer chain makes sense
+      // If we have a current school, FILTER to only transfers that lead to current school
       if (school && matchingTransfers.length > 0) {
-        console.log('🏫 Verifying transfer chain for school:', school);
+        console.log('🏫 Filtering transfers for school:', school);
 
-        // Check if any transfer destination matches current school
-        const hasMatchingDestination = matchingTransfers.some(t => {
+        // Only keep transfers where destination matches current school
+        const filteredTransfers = matchingTransfers.filter(t => {
           const destSchool = t.destination?.toLowerCase() || '';
           const currentSchool = school.toLowerCase();
-          return destSchool.includes(currentSchool) || currentSchool.includes(destSchool);
+          const matches = destSchool.includes(currentSchool) || currentSchool.includes(destSchool);
+
+          if (!matches) {
+            console.log('  ❌ Filtering out:', `${t.origin} → ${t.destination} (${t.season}) - doesn't match ${school}`);
+          } else {
+            console.log('  ✅ Keeping:', `${t.origin} → ${t.destination} (${t.season})`);
+          }
+
+          return matches;
         });
 
-        if (!hasMatchingDestination) {
+        if (filteredTransfers.length === 0) {
           console.warn('⚠️ No transfers match current school. These may be for a different player with the same name.');
           console.warn('   Current school:', school);
           console.warn('   Transfer destinations:', matchingTransfers.map(t => t.destination).join(', '));
@@ -808,6 +816,10 @@ class PlayersController {
             warning: 'Found transfers but none match current school - may be different player'
           });
         }
+
+        // Use filtered transfers instead
+        matchingTransfers = filteredTransfers;
+        console.log('✅ Filtered to', matchingTransfers.length, 'transfers matching current school');
       }
 
       console.log('✅ Found', matchingTransfers.length, 'verified transfer records');
