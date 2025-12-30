@@ -130,6 +130,12 @@ function AddPlayer() {
           let cfbdPlayer = null;
           const espnSchool = player.school?.toLowerCase() || '';
 
+          // Debug: Show what schools CFBD returned
+          if (cfbdPlayers.length > 0) {
+            console.log('🏫 CFBD schools found:', cfbdPlayers.map(p => p.school).join(', '));
+            console.log('🏫 ESPN school to match:', player.school);
+          }
+
           // First, try exact school match
           cfbdPlayer = cfbdPlayers.find(p =>
             p.school?.toLowerCase() === espnSchool
@@ -139,14 +145,18 @@ function AddPlayer() {
           if (!cfbdPlayer && espnSchool) {
             cfbdPlayer = cfbdPlayers.find(p => {
               const cfbdSchool = p.school?.toLowerCase() || '';
-              // Match if either contains the other (e.g., "Penn State" matches "Penn State Nittany Lions")
-              return cfbdSchool.includes(espnSchool) || espnSchool.includes(cfbdSchool);
+              const matches = cfbdSchool.includes(espnSchool) || espnSchool.includes(cfbdSchool);
+              if (matches) {
+                console.log(`✓ Partial match: "${p.school}" matches "${player.school}"`);
+              }
+              return matches;
             });
           }
 
-          // If still no match and we used fuzzy matching (last name only), don't auto-fill
+          // If still no match and we have multiple results, don't auto-fill
           if (!cfbdPlayer && cfbdPlayers.length > 0) {
             console.warn(`⚠️ Found ${cfbdPlayers.length} CFBD matches but none match school "${player.school}"`);
+            console.warn('   CFBD schools:', cfbdPlayers.map(p => `"${p.school}"`).join(', '));
             console.warn('   Please verify player information manually');
             // Don't use potentially wrong data - let user fill in manually
             cfbdPlayer = null;
