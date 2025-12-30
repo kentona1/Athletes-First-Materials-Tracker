@@ -9,6 +9,7 @@ function PlayerDetail() {
   const navigate = useNavigate();
   const [player, setPlayer] = useState(null);
   const [schoolData, setSchoolData] = useState(null);
+  const [progressionLogos, setProgressionLogos] = useState({}); // Map of school name to logo URL
   const [loading, setLoading] = useState(true);
   const [showMaterialForm, setShowMaterialForm] = useState(false);
   const [materialTypes, setMaterialTypes] = useState([]);
@@ -31,6 +32,42 @@ function PlayerDetail() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
+  const fetchProgressionLogos = async (playerData) => {
+    const logos = {};
+    const schoolsToFetch = [];
+
+    // Collect all unique schools in the progression
+    if (playerData.original_commitment) {
+      schoolsToFetch.push(playerData.original_commitment);
+    }
+    if (playerData.transfers && playerData.transfers.length > 0) {
+      playerData.transfers.forEach(transfer => {
+        if (transfer.to_school && !schoolsToFetch.includes(transfer.to_school)) {
+          schoolsToFetch.push(transfer.to_school);
+        }
+      });
+    }
+    if (playerData.school && !schoolsToFetch.includes(playerData.school)) {
+      schoolsToFetch.push(playerData.school);
+    }
+
+    // Fetch logo for each school
+    for (const schoolName of schoolsToFetch) {
+      try {
+        const response = await axios.get('/api/schools/lookup', {
+          params: { name: schoolName }
+        });
+        if (response.data.data && response.data.data.logo) {
+          logos[schoolName] = response.data.data.logo;
+        }
+      } catch (error) {
+        console.warn(`Could not fetch logo for ${schoolName}:`, error);
+      }
+    }
+
+    setProgressionLogos(logos);
+  };
+
   const fetchPlayerDetails = async () => {
     try {
       const response = await axios.get(`/api/players/${id}`);
@@ -50,6 +87,9 @@ function PlayerDetail() {
           console.warn('Could not fetch school data:', schoolError);
         }
       }
+
+      // Fetch logos for progression timeline schools
+      await fetchProgressionLogos(playerData);
 
       setLoading(false);
     } catch (error) {
@@ -287,6 +327,13 @@ function PlayerDetail() {
                   <div className="progression-arrow">→</div>
                   <div className="progression-step">
                     <div className="step-label">Original</div>
+                    {progressionLogos[player.original_commitment] && (
+                      <img
+                        src={progressionLogos[player.original_commitment]}
+                        alt={player.original_commitment}
+                        className="progression-logo"
+                      />
+                    )}
                     <div className="step-school">{player.original_commitment}</div>
                   </div>
                 </>
@@ -298,6 +345,13 @@ function PlayerDetail() {
                     <div className="progression-arrow">→</div>
                     <div className="progression-step">
                       <div className="step-label">{transfer.transfer_year}</div>
+                      {progressionLogos[transfer.to_school] && (
+                        <img
+                          src={progressionLogos[transfer.to_school]}
+                          alt={transfer.to_school}
+                          className="progression-logo"
+                        />
+                      )}
                       <div className="step-school">{transfer.to_school}</div>
                     </div>
                   </React.Fragment>
@@ -309,6 +363,13 @@ function PlayerDetail() {
                   <div className="progression-arrow">→</div>
                   <div className="progression-step current">
                     <div className="step-label">Current</div>
+                    {progressionLogos[player.school] && (
+                      <img
+                        src={progressionLogos[player.school]}
+                        alt={player.school}
+                        className="progression-logo"
+                      />
+                    )}
                     <div className="step-school">{player.school}</div>
                   </div>
                 </>

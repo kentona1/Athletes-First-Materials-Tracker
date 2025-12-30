@@ -423,11 +423,12 @@
   flex-direction: column;
   align-items: center;
   text-align: center;
-  min-width: 120px;
+  min-width: 140px;
   padding: 1rem;
   background: white;
   border-radius: 8px;
   box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  gap: 0.5rem;
 }
 
 .progression-step.current {
@@ -440,13 +441,20 @@
   color: #6c757d;
   text-transform: uppercase;
   font-weight: 600;
-  margin-bottom: 0.5rem;
+}
+
+.progression-logo {
+  width: 60px;
+  height: 60px;
+  object-fit: contain;
+  margin: 0.25rem 0;
 }
 
 .step-school {
-  font-size: 0.9375rem;
+  font-size: 0.875rem;
   color: #333;
   font-weight: 600;
+  line-height: 1.2;
 }
 
 .progression-arrow {
