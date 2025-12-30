@@ -13,6 +13,7 @@ import Analytics from './pages/Analytics';
 import Materials from './pages/Materials';
 import Agents from './pages/Agents';
 import UserManagement from './pages/UserManagement';
+import Schools from './pages/Schools';
 
 function App() {
   const [user, setUser] = useState(null);
@@ -64,7 +65,10 @@ function App() {
             <li><Link to="/agents">Agents</Link></li>
             <li><Link to="/analytics">Analytics</Link></li>
             {user.role === 'admin' && (
-              <li><Link to="/users">Users</Link></li>
+              <>
+                <li><Link to="/schools">Schools</Link></li>
+                <li><Link to="/users">Users</Link></li>
+              </>
             )}
           </ul>
           <div className="nav-user">
@@ -86,7 +90,10 @@ function App() {
             <Route path="/agents" element={<Agents />} />
             <Route path="/analytics" element={<Analytics />} />
             {user.role === 'admin' && (
-              <Route path="/users" element={<UserManagement />} />
+              <>
+                <Route path="/schools" element={<Schools />} />
+                <Route path="/users" element={<UserManagement />} />
+              </>
             )}
             <Route path="*" element={<Navigate to="/" />} />
           </Routes>
