@@ -554,6 +554,87 @@ class PlayersController {
       });
     }
   }
+
+  // Get recruiting data from CFBD for additional details (hometown, class year)
+  async getRecruitingData(req, res) {
+    try {
+      const { name, team, year } = req.query;
+
+      if (!name || (!team && !year)) {
+        return res.status(400).json({
+          success: false,
+          error: 'Name and either team or year required'
+        });
+      }
+
+      const apiKey = process.env.CFBD_API_KEY;
+      if (!apiKey) {
+        return res.status(500).json({
+          success: false,
+          error: 'CFBD API key not configured'
+        });
+      }
+
+      console.log('🎓 Searching CFBD recruiting for:', name, 'team:', team, 'year:', year);
+
+      // Search recruiting data by team or year
+      const params = {};
+      if (team) params.team = team;
+      if (year) params.year = year;
+
+      const response = await axios.get(
+        'https://api.collegefootballdata.com/recruiting/players',
+        {
+          params,
+          headers: {
+            'Authorization': `Bearer ${apiKey}`
+          }
+        }
+      );
+
+      const allRecruits = response.data || [];
+      console.log('📊 CFBD recruiting returned', allRecruits.length, 'total recruits');
+
+      // Find matching player by name
+      const nameToMatch = name.toLowerCase().trim();
+      const matchingRecruits = allRecruits.filter(recruit => {
+        const recruitName = recruit.name?.toLowerCase().trim() || '';
+        return recruitName.includes(nameToMatch) || nameToMatch.includes(recruitName);
+      });
+
+      console.log('✅ Found', matchingRecruits.length, 'matching recruits');
+
+      if (matchingRecruits.length > 0) {
+        // Format recruiting data
+        const formattedRecruits = matchingRecruits.map(recruit => ({
+          name: recruit.name,
+          position: recruit.position,
+          height: recruit.height,
+          weight: recruit.weight,
+          stars: recruit.stars,
+          rating: recruit.rating,
+          school: recruit.committedTo,
+          hometown: recruit.city,
+          state: recruit.stateProvince,
+          country: recruit.country,
+          recruitingYear: recruit.year,
+          classYear: recruit.year, // Year they were recruited = freshman year
+          ranking: recruit.ranking,
+          athleteId: recruit.athleteId
+        }));
+
+        res.json({ success: true, data: formattedRecruits });
+      } else {
+        res.json({ success: true, data: [] });
+      }
+    } catch (error) {
+      console.error('Error fetching CFBD recruiting data:', error.message);
+      res.status(500).json({
+        success: false,
+        error: error.message
+      });
+    }
+  }
 }
 
 module.exports = new PlayersController();

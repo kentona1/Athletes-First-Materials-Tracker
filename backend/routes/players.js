@@ -7,6 +7,7 @@ router.get('/', playersController.getAllPlayers.bind(playersController));
 router.get('/analytics', playersController.getAnalytics.bind(playersController));
 router.get('/search-espn', playersController.searchESPN.bind(playersController));
 router.get('/search-cfbd', playersController.searchCFBD.bind(playersController));
+router.get('/recruiting-data', playersController.getRecruitingData.bind(playersController));
 router.get('/espn-details/:id', playersController.getESPNPlayerDetails.bind(playersController));
 router.get('/:id', playersController.getPlayer.bind(playersController));
 router.post('/', playersController.createPlayer.bind(playersController));

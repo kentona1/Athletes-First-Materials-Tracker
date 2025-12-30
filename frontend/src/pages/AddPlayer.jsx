@@ -111,17 +111,45 @@ function AddPlayer() {
           if (cfbdPlayer) {
             console.log('✅ Found CFBD data:', cfbdPlayer);
 
-            // Merge ESPN data (photo, ESPN ID) with CFBD data (details)
+            // If hometown is empty, try recruiting data for more details
+            let recruitingData = null;
+            if (!cfbdPlayer.hometown) {
+              try {
+                console.log('🎓 Hometown empty, trying recruiting data for:', player.name, player.school);
+                const recruitResponse = await axios.get('/api/players/recruiting-data', {
+                  params: {
+                    name: player.name,
+                    team: player.school
+                  }
+                });
+
+                const recruits = recruitResponse.data.data || [];
+                console.log('📊 Recruiting returned', recruits.length, 'results');
+
+                if (recruits.length > 0) {
+                  recruitingData = recruits[0];
+                  console.log('✅ Found recruiting data:', recruitingData);
+                }
+              } catch (recruitError) {
+                console.warn('⚠️ Recruiting data fetch failed:', recruitError.message);
+              }
+            }
+
+            // Merge ESPN + CFBD + Recruiting data
+            const hometown = recruitingData?.hometown || cfbdPlayer.hometown || '';
+            const state = recruitingData?.state || cfbdPlayer.state || '';
+            const classYear = recruitingData?.classYear || '';
+
             setFormData({
               name: player.name || '',
               position: cfbdPlayer.position || player.position || '',
               school: cfbdPlayer.school || player.school || '',
               conference: '', // Still need to add this
-              hometown: cfbdPlayer.hometown || '',
-              state: cfbdPlayer.state || '',
+              hometown: hometown,
+              state: state,
               height: cfbdPlayer.height || '',
               weight: cfbdPlayer.weight || '',
-              class_year: '', // Not available in CFBD player search
+              class_year: classYear,
               eligibility_year: new Date().getFullYear(),
               espn_id: espnId || '',
               photo_url: player.image || ''
@@ -132,7 +160,10 @@ function AddPlayer() {
               school: cfbdPlayer.school || player.school,
               photo_url: player.image,
               espn_id: espnId,
-              ...cfbdPlayer
+              ...cfbdPlayer,
+              hometown,
+              state,
+              classYear
             });
           } else {
             throw new Error('No CFBD data found');
