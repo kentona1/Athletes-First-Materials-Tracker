@@ -103,12 +103,14 @@ function AdvancedHeatMap({ filters = {} }) {
     updateDimensions();
     window.addEventListener('resize', updateDimensions);
     return () => window.removeEventListener('resize', updateDimensions);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters]);
 
   useEffect(() => {
     if (!loading && Object.keys(schoolData).length > 0) {
       drawHeatMap();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [schoolData, loading, dimensions]);
 
   const updateDimensions = () => {

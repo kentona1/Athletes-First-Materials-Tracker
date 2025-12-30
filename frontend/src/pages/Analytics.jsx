@@ -12,6 +12,7 @@ function Analytics() {
 
   useEffect(() => {
     fetchAnalytics();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [year]);
 
   const fetchAnalytics = async () => {

@@ -26,6 +26,7 @@ function PlayerDetail() {
     fetchPlayerDetails();
     fetchMaterialTypes();
     fetchAgents();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   const fetchPlayerDetails = async () => {

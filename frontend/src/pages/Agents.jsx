@@ -2,22 +2,17 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 
 function Agents() {
-  const [agents, setAgents] = useState([]);
   const [performance, setPerformance] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchAgentsData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchAgentsData = async () => {
     try {
-      const [agentsRes, perfRes] = await Promise.all([
-        axios.get('/api/agents'),
-        axios.get('/api/agents/performance')
-      ]);
-
-      setAgents(agentsRes.data.data);
+      const perfRes = await axios.get('/api/agents/performance');
       setPerformance(perfRes.data.data);
       setLoading(false);
     } catch (error) {

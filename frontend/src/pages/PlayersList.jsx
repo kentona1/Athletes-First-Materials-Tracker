@@ -15,13 +15,13 @@ function PlayersList() {
     agent: ''
   });
 
-  const [agents, setAgents] = useState([]);
   const [positions, setPositions] = useState([]);
   const [conferences, setConferences] = useState([]);
 
   useEffect(() => {
     fetchPlayers();
     fetchFilterOptions();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters]);
 
   const fetchPlayers = async () => {
@@ -42,12 +42,7 @@ function PlayersList() {
 
   const fetchFilterOptions = async () => {
     try {
-      const [agentsRes, analyticsRes] = await Promise.all([
-        axios.get('/api/agents'),
-        axios.get('/api/players/analytics')
-      ]);
-
-      setAgents(agentsRes.data.data);
+      const analyticsRes = await axios.get('/api/players/analytics');
       
       const analytics = analyticsRes.data.data;
       setPositions(analytics.byPosition?.map(p => p.position) || []);
