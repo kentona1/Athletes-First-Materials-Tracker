@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import axios from '../api/axios';
 import './Schools.css';
 
@@ -13,21 +13,16 @@ function Schools() {
   const [totalSchools, setTotalSchools] = useState(0);
   const LIMIT = 50;
 
-  useEffect(() => {
-    loadConferences();
-    loadSchools();
-  }, [page, selectedConference]);
-
-  const loadConferences = async () => {
+  const loadConferences = useCallback(async () => {
     try {
       const response = await axios.get('/api/schools/conferences');
       setConferences(response.data.data || []);
     } catch (error) {
       console.error('Error loading conferences:', error);
     }
-  };
+  }, []);
 
-  const loadSchools = async () => {
+  const loadSchools = useCallback(async () => {
     setLoading(true);
     try {
       const params = {
@@ -47,7 +42,12 @@ function Schools() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [page, selectedConference, LIMIT]);
+
+  useEffect(() => {
+    loadConferences();
+    loadSchools();
+  }, [loadConferences, loadSchools]);
 
   const searchSchools = async (query) => {
     if (!query || query.length < 2) {
