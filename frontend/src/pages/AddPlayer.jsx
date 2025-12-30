@@ -4,6 +4,11 @@ import axios from '../api/axios';
 
 function AddPlayer() {
   const navigate = useNavigate();
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [searching, setSearching] = useState(false);
+  const [selectedPlayer, setSelectedPlayer] = useState(null);
+
   const [formData, setFormData] = useState({
     name: '',
     position: '',
@@ -11,9 +16,77 @@ function AddPlayer() {
     conference: '',
     hometown: '',
     state: '',
+    height: '',
+    weight: '',
     class_year: '',
-    eligibility_year: new Date().getFullYear()
+    eligibility_year: new Date().getFullYear(),
+    espn_id: '',
+    photo_url: ''
   });
+
+  // Search ESPN for players
+  const handleSearch = async (e) => {
+    e.preventDefault();
+    if (!searchQuery.trim()) return;
+
+    setSearching(true);
+    try {
+      const response = await axios.get('/api/players/search-espn', {
+        params: { name: searchQuery }
+      });
+
+      console.log('Search results:', response.data);
+      setSearchResults(response.data.data || []);
+    } catch (error) {
+      console.error('Error searching ESPN:', error);
+      alert('Error searching ESPN. Please try again.');
+    } finally {
+      setSearching(false);
+    }
+  };
+
+  // Fetch detailed player data and populate form
+  const selectPlayer = async (player) => {
+    try {
+      // Extract ESPN ID from the player object or URL
+      const espnId = player.id || player.url?.match(/\/id\/(\d+)\//)?.[1];
+
+      if (!espnId) {
+        console.error('No ESPN ID found for player');
+        return;
+      }
+
+      console.log('Fetching details for ESPN ID:', espnId);
+
+      const response = await axios.get(`/api/players/espn-details/${espnId}`);
+      const playerData = response.data.data;
+
+      console.log('Player data:', playerData);
+
+      // Auto-populate form
+      setFormData({
+        name: playerData.name || '',
+        position: playerData.position || '',
+        school: playerData.school || '',
+        conference: playerData.conference || '',
+        hometown: playerData.hometown || '',
+        state: playerData.state || '',
+        height: playerData.height || '',
+        weight: playerData.weight ? parseInt(playerData.weight) : '',
+        class_year: playerData.class_year || '',
+        eligibility_year: new Date().getFullYear(),
+        espn_id: playerData.espn_id || '',
+        photo_url: playerData.photo_url || ''
+      });
+
+      setSelectedPlayer(playerData);
+      setSearchResults([]); // Clear search results
+      setSearchQuery(''); // Clear search
+    } catch (error) {
+      console.error('Error fetching player details:', error);
+      alert('Error loading player data. You can still enter manually.');
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -31,9 +104,127 @@ function AddPlayer() {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
+  const clearSelection = () => {
+    setSelectedPlayer(null);
+    setFormData({
+      name: '',
+      position: '',
+      school: '',
+      conference: '',
+      hometown: '',
+      state: '',
+      height: '',
+      weight: '',
+      class_year: '',
+      eligibility_year: new Date().getFullYear(),
+      espn_id: '',
+      photo_url: ''
+    });
+  };
+
   return (
     <div className="add-player">
       <h2>Add New Player</h2>
+
+      {/* ESPN Search Section */}
+      <div className="espn-search-section" style={{ marginBottom: '30px', padding: '20px', background: '#f5f5f5', borderRadius: '8px' }}>
+        <h3 style={{ marginTop: 0 }}>🔍 Search ESPN</h3>
+        <form onSubmit={handleSearch} style={{ display: 'flex', gap: '10px' }}>
+          <input
+            type="text"
+            placeholder="Search for a player (e.g., Caleb Banks)..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            style={{ flex: 1, padding: '10px', fontSize: '16px', borderRadius: '4px', border: '1px solid #ddd' }}
+          />
+          <button
+            type="submit"
+            className="btn btn-primary"
+            disabled={searching || !searchQuery.trim()}
+          >
+            {searching ? 'Searching...' : 'Search'}
+          </button>
+        </form>
+
+        {/* Search Results */}
+        {searchResults.length > 0 && (
+          <div style={{ marginTop: '20px' }}>
+            <h4>Results ({searchResults.length})</h4>
+            <div style={{ display: 'grid', gap: '10px' }}>
+              {searchResults.map((player, index) => (
+                <div
+                  key={index}
+                  onClick={() => selectPlayer(player)}
+                  style={{
+                    padding: '15px',
+                    background: 'white',
+                    border: '1px solid #ddd',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '15px',
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.borderColor = '#007bff'}
+                  onMouseLeave={(e) => e.currentTarget.style.borderColor = '#ddd'}
+                >
+                  {player.image && (
+                    <img
+                      src={player.image}
+                      alt={player.name}
+                      style={{ width: '50px', height: '50px', borderRadius: '50%', objectFit: 'cover' }}
+                    />
+                  )}
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: 'bold', fontSize: '16px' }}>{player.name}</div>
+                    <div style={{ color: '#666', fontSize: '14px' }}>
+                      {player.position} • {player.school}
+                    </div>
+                  </div>
+                  <button
+                    className="btn btn-sm btn-primary"
+                    style={{ pointerEvents: 'none' }}
+                  >
+                    Select
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Show selected player preview */}
+      {selectedPlayer && (
+        <div style={{ marginBottom: '20px', padding: '15px', background: '#e8f5e9', borderRadius: '8px', border: '1px solid #4caf50' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+            {selectedPlayer.photo_url && (
+              <img
+                src={selectedPlayer.photo_url}
+                alt={selectedPlayer.name}
+                style={{ width: '60px', height: '60px', borderRadius: '50%', objectFit: 'cover' }}
+              />
+            )}
+            <div style={{ flex: 1 }}>
+              <div style={{ fontWeight: 'bold', color: '#2e7d32' }}>✓ Selected from ESPN</div>
+              <div style={{ fontSize: '18px', fontWeight: 'bold' }}>{selectedPlayer.name}</div>
+              <div style={{ color: '#666' }}>
+                {selectedPlayer.position} • {selectedPlayer.school}
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={clearSelection}
+              className="btn btn-secondary btn-sm"
+            >
+              Clear & Search Again
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Player Form */}
       <form onSubmit={handleSubmit} className="player-form">
         <div className="form-group">
           <label>Name *</label>
@@ -103,6 +294,30 @@ function AddPlayer() {
 
         <div className="form-row">
           <div className="form-group">
+            <label>Height</label>
+            <input
+              type="text"
+              name="height"
+              value={formData.height}
+              onChange={handleChange}
+              placeholder="e.g., 6'6&quot;"
+            />
+          </div>
+
+          <div className="form-group">
+            <label>Weight (lbs)</label>
+            <input
+              type="number"
+              name="weight"
+              value={formData.weight}
+              onChange={handleChange}
+              placeholder="e.g., 330"
+            />
+          </div>
+        </div>
+
+        <div className="form-row">
+          <div className="form-group">
             <label>Hometown</label>
             <input
               type="text"
@@ -122,6 +337,20 @@ function AddPlayer() {
             />
           </div>
         </div>
+
+        {formData.espn_id && (
+          <div className="form-group">
+            <label>ESPN ID</label>
+            <input
+              type="text"
+              name="espn_id"
+              value={formData.espn_id}
+              onChange={handleChange}
+              disabled
+              style={{ background: '#f0f0f0' }}
+            />
+          </div>
+        )}
 
         <div className="form-actions">
           <button type="button" onClick={() => navigate('/players')} className="btn btn-secondary">

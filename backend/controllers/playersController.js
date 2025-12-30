@@ -239,26 +239,107 @@ class PlayersController {
       const { name } = req.query;
 
       if (!name) {
-        return res.status(400).json({ 
-          success: false, 
-          error: 'Name parameter required' 
+        return res.status(400).json({
+          success: false,
+          error: 'Name parameter required'
         });
       }
 
-      // Note: This is a simplified ESPN API integration
-      // You may need to adjust based on actual ESPN API access
-      const response = await axios.get(
-        `http://site.api.espn.com/apis/site/v2/sports/football/college-football/athletes`,
-        { params: { name } }
+      // Use ESPN's search/autocomplete API
+      const searchResponse = await axios.get(
+        'https://site.web.api.espn.com/apis/search/v2',
+        {
+          params: {
+            region: 'us',
+            lang: 'en',
+            query: name,
+            type: 'player',
+            sport: 'football',
+            league: 'college-football',
+            limit: 20
+          }
+        }
       );
 
-      res.json({ success: true, data: response.data });
+      // Extract player results
+      const players = searchResponse.data?.results || [];
+
+      // Format results for frontend
+      const formattedPlayers = players.map(player => ({
+        id: player.id,
+        name: player.displayName || player.name,
+        position: player.position?.abbreviation,
+        school: player.team?.displayName || player.team?.name,
+        league: player.league?.abbreviation,
+        image: player.image?.url,
+        url: player.url
+      }));
+
+      res.json({ success: true, data: formattedPlayers });
     } catch (error) {
-      console.error('Error searching ESPN:', error);
-      res.status(500).json({ 
-        success: false, 
+      console.error('Error searching ESPN:', error.message);
+      res.status(500).json({
+        success: false,
         error: 'ESPN API error',
-        message: error.message 
+        message: error.message
+      });
+    }
+  }
+
+  // Get detailed player data from ESPN by ID
+  async getESPNPlayerDetails(req, res) {
+    try {
+      const { id } = req.params;
+
+      if (!id) {
+        return res.status(400).json({
+          success: false,
+          error: 'Player ID required'
+        });
+      }
+
+      // Fetch player details from ESPN
+      const response = await axios.get(
+        `https://site.api.espn.com/apis/site/v2/sports/football/college-football/athletes/${id}`
+      );
+
+      const player = response.data?.athlete;
+
+      if (!player) {
+        return res.status(404).json({
+          success: false,
+          error: 'Player not found'
+        });
+      }
+
+      // Extract and format player data
+      const formattedData = {
+        espn_id: player.id,
+        name: player.displayName || player.fullName,
+        position: player.position?.abbreviation || player.position?.name,
+        school: player.team?.displayName || player.team?.name,
+        conference: player.team?.conferenceAbbreviation,
+        height: player.displayHeight,
+        weight: player.displayWeight,
+        class_year: player.experience?.displayValue || player.class,
+        hometown: player.birthPlace?.city,
+        state: player.birthPlace?.state,
+        photo_url: player.headshot?.href || player.headshot?.url,
+        jersey: player.jersey,
+        // Additional data
+        age: player.age,
+        dateOfBirth: player.dateOfBirth,
+        slug: player.slug,
+        links: player.links
+      };
+
+      res.json({ success: true, data: formattedData });
+    } catch (error) {
+      console.error('Error fetching ESPN player details:', error.message);
+      res.status(500).json({
+        success: false,
+        error: 'ESPN API error',
+        message: error.message
       });
     }
   }
