@@ -8,10 +8,17 @@ function Login({ onLogin }) {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
+  console.log('🔵 Login component loaded');
+  console.log('🔵 Backend URL:', axios.defaults.baseURL);
+
   const handleSubmit = async (e) => {
+    console.log('🟢 Form submitted!');
     e.preventDefault();
     setError('');
     setLoading(true);
+
+    console.log('🟢 Attempting login with:', { username, password: '***' });
+    console.log('🟢 Making request to:', axios.defaults.baseURL + '/api/auth/login');
 
     try {
       const response = await axios.post('/api/auth/login', {
@@ -19,21 +26,29 @@ function Login({ onLogin }) {
         password
       });
 
+      console.log('✅ Login response:', response);
+
       if (response.data.success) {
+        console.log('✅ Login successful!');
         // Store token
         localStorage.setItem('token', response.data.token);
         localStorage.setItem('user', JSON.stringify(response.data.user));
-        
+
         // Set axios default header
         axios.defaults.headers.common['Authorization'] = `Bearer ${response.data.token}`;
-        
+
         // Call parent callback
+        console.log('✅ Calling onLogin callback');
         onLogin(response.data.user);
       }
     } catch (err) {
-      setError(err.response?.data?.error || 'Login failed. Please try again.');
+      console.error('❌ Login error:', err);
+      console.error('❌ Error response:', err.response);
+      console.error('❌ Error message:', err.message);
+      setError(err.response?.data?.error || err.message || 'Login failed. Please try again.');
     } finally {
       setLoading(false);
+      console.log('🔵 Login attempt complete');
     }
   };
 
