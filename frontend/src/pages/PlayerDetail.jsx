@@ -189,6 +189,135 @@ function PlayerDetail() {
         )}
       </div>
 
+      {/* Recruiting Profile Section */}
+      {(player.recruiting_stars || player.recruiting_rating || player.recruiting_ranking || player.high_school) && (
+        <div className="recruiting-profile-card">
+          <h2>Recruiting Profile</h2>
+
+          <div className="recruiting-grid">
+            {player.recruiting_stars && (
+              <div className="recruiting-item">
+                <label>Rating</label>
+                <div className="star-rating">
+                  {'⭐'.repeat(player.recruiting_stars)}
+                  <span className="star-text">{player.recruiting_stars}-Star</span>
+                </div>
+              </div>
+            )}
+
+            {player.recruiting_rating && (
+              <div className="recruiting-item">
+                <label>Composite Score</label>
+                <span className="rating-score">{player.recruiting_rating.toFixed(4)}</span>
+              </div>
+            )}
+
+            {player.recruiting_ranking && (
+              <div className="recruiting-item">
+                <label>National Ranking</label>
+                <span className="ranking">#{player.recruiting_ranking}</span>
+              </div>
+            )}
+
+            {player.high_school && (
+              <div className="recruiting-item">
+                <label>High School</label>
+                <span>{player.high_school}</span>
+              </div>
+            )}
+
+            {player.recruiting_class_year && (
+              <div className="recruiting-item">
+                <label>Recruiting Class</label>
+                <span>{player.recruiting_class_year}</span>
+              </div>
+            )}
+
+            {player.original_commitment && (
+              <div className="recruiting-item">
+                <label>Original Commitment</label>
+                <span>{player.original_commitment}</span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Transfer History Section */}
+      {player.transfers && player.transfers.length > 0 && (
+        <div className="transfer-history-card">
+          <h2>Transfer History</h2>
+
+          <div className="transfer-timeline">
+            {player.transfers.map((transfer, index) => (
+              <div key={transfer.id} className="transfer-item">
+                <div className="transfer-year">{transfer.transfer_year || transfer.transfer_season}</div>
+                <div className="transfer-arrow">→</div>
+                <div className="transfer-details">
+                  <div className="transfer-schools">
+                    {transfer.from_school && (
+                      <span className="from-school">{transfer.from_school} → </span>
+                    )}
+                    <span className="to-school">{transfer.to_school}</span>
+                  </div>
+                  {transfer.eligibility_remaining && (
+                    <div className="transfer-eligibility">
+                      Eligibility: {transfer.eligibility_remaining}
+                    </div>
+                  )}
+                  <div className="transfer-type">{transfer.transfer_type || 'Portal'}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* School Progression Timeline */}
+          <div className="school-progression">
+            <h3>School Progression</h3>
+            <div className="progression-timeline">
+              {player.high_school && (
+                <div className="progression-step">
+                  <div className="step-label">High School</div>
+                  <div className="step-school">{player.high_school}</div>
+                </div>
+              )}
+
+              {player.original_commitment && player.original_commitment !== player.school && (
+                <>
+                  <div className="progression-arrow">→</div>
+                  <div className="progression-step">
+                    <div className="step-label">Original</div>
+                    <div className="step-school">{player.original_commitment}</div>
+                  </div>
+                </>
+              )}
+
+              {player.transfers && player.transfers.length > 0 && (
+                player.transfers.map((transfer, idx) => (
+                  <React.Fragment key={idx}>
+                    <div className="progression-arrow">→</div>
+                    <div className="progression-step">
+                      <div className="step-label">{transfer.transfer_year}</div>
+                      <div className="step-school">{transfer.to_school}</div>
+                    </div>
+                  </React.Fragment>
+                ))
+              )}
+
+              {(!player.transfers || player.transfers.length === 0) && player.school !== player.original_commitment && (
+                <>
+                  <div className="progression-arrow">→</div>
+                  <div className="progression-step current">
+                    <div className="step-label">Current</div>
+                    <div className="step-school">{player.school}</div>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="materials-section">
         <div className="section-header">
           <h2>Materials ({player.materials?.length || 0})</h2>
