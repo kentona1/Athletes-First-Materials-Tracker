@@ -86,30 +86,83 @@ function AddPlayer() {
           photo_url: playerData.photo_url || player.image
         });
       } catch (detailError) {
-        console.warn('⚠️ Could not fetch detailed data, using search data:', detailError.message);
+        console.warn('⚠️ ESPN details API failed, trying CFBD:', detailError.message);
 
-        // Fall back to search result data
-        setFormData({
-          name: player.name || '',
-          position: player.position || '', // Available in search results
-          school: player.school || '',
-          conference: '', // Not in search results
-          hometown: '', // Not in search results
-          state: '', // Not in search results
-          height: '', // Not in search results
-          weight: '', // Not in search results
-          class_year: '', // Not in search results
-          eligibility_year: new Date().getFullYear(),
-          espn_id: espnId || '',
-          photo_url: player.image || ''
-        });
+        // Try to get detailed data from CFBD
+        try {
+          console.log('🔍 Searching CFBD for:', player.name);
+          const cfbdResponse = await axios.get('/api/players/search-cfbd', {
+            params: { name: player.name }
+          });
 
-        setSelectedPlayer({
-          name: player.name,
-          school: player.school,
-          photo_url: player.image,
-          espn_id: espnId
-        });
+          const cfbdPlayers = cfbdResponse.data.data || [];
+          console.log('📊 CFBD returned', cfbdPlayers.length, 'players');
+
+          // Try to find exact match by school
+          let cfbdPlayer = cfbdPlayers.find(p =>
+            p.school?.toLowerCase() === player.school?.toLowerCase()
+          );
+
+          // If no exact school match, use first result
+          if (!cfbdPlayer && cfbdPlayers.length > 0) {
+            cfbdPlayer = cfbdPlayers[0];
+          }
+
+          if (cfbdPlayer) {
+            console.log('✅ Found CFBD data:', cfbdPlayer);
+
+            // Merge ESPN data (photo, ESPN ID) with CFBD data (details)
+            setFormData({
+              name: player.name || '',
+              position: cfbdPlayer.position || player.position || '',
+              school: cfbdPlayer.school || player.school || '',
+              conference: '', // Still need to add this
+              hometown: cfbdPlayer.hometown || '',
+              state: cfbdPlayer.state || '',
+              height: cfbdPlayer.height || '',
+              weight: cfbdPlayer.weight || '',
+              class_year: '', // Not available in CFBD player search
+              eligibility_year: new Date().getFullYear(),
+              espn_id: espnId || '',
+              photo_url: player.image || ''
+            });
+
+            setSelectedPlayer({
+              name: player.name,
+              school: cfbdPlayer.school || player.school,
+              photo_url: player.image,
+              espn_id: espnId,
+              ...cfbdPlayer
+            });
+          } else {
+            throw new Error('No CFBD data found');
+          }
+        } catch (cfbdError) {
+          console.warn('⚠️ CFBD also failed, using ESPN search data only:', cfbdError.message);
+
+          // Final fallback: use ESPN search data only
+          setFormData({
+            name: player.name || '',
+            position: player.position || '',
+            school: player.school || '',
+            conference: '',
+            hometown: '',
+            state: '',
+            height: '',
+            weight: '',
+            class_year: '',
+            eligibility_year: new Date().getFullYear(),
+            espn_id: espnId || '',
+            photo_url: player.image || ''
+          });
+
+          setSelectedPlayer({
+            name: player.name,
+            school: player.school,
+            photo_url: player.image,
+            espn_id: espnId
+          });
+        }
       }
 
       setSearchResults([]); // Clear search results

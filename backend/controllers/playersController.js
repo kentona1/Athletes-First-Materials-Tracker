@@ -474,6 +474,86 @@ class PlayersController {
       res.status(500).json({ success: false, error: error.message });
     }
   }
+
+  // Search CFBD for player details
+  async searchCFBD(req, res) {
+    try {
+      const { name } = req.query;
+
+      if (!name) {
+        return res.status(400).json({
+          success: false,
+          error: 'Name parameter required'
+        });
+      }
+
+      const apiKey = process.env.CFBD_API_KEY;
+      if (!apiKey) {
+        console.error('⚠️ CFBD_API_KEY not configured');
+        return res.status(500).json({
+          success: false,
+          error: 'CFBD API key not configured'
+        });
+      }
+
+      console.log('🔍 Searching CFBD for:', name);
+
+      const response = await axios.get(
+        'https://api.collegefootballdata.com/player/search',
+        {
+          params: {
+            searchTerm: name
+          },
+          headers: {
+            'Authorization': `Bearer ${apiKey}`
+          }
+        }
+      );
+
+      const players = response.data || [];
+      console.log('👥 Found', players.length, 'players from CFBD');
+
+      if (players.length > 0) {
+        console.log('🏈 First player:', JSON.stringify(players[0], null, 2));
+      }
+
+      // Format the response
+      const formattedPlayers = players.map(player => {
+        // Parse hometown into city and state
+        let hometown = '';
+        let state = '';
+        if (player.home_town) {
+          const parts = player.home_town.split(',').map(p => p.trim());
+          hometown = parts[0] || '';
+          state = parts[1] || '';
+        }
+
+        return {
+          id: player.athlete_id,
+          name: player.name,
+          firstName: player.first_name,
+          lastName: player.last_name,
+          position: player.position,
+          height: player.height,
+          weight: player.weight,
+          jersey: player.jersey,
+          school: player.team,
+          hometown: hometown,
+          state: state,
+          teamColor: player.team_color,
+          teamColorSecondary: player.team_color_secondary
+        };
+      });
+
+      res.json({ success: true, data: formattedPlayers });
+    } catch (error) {
+      console.error('Error searching CFBD:', error.message);
+      res.status(500).json({
+        success: false,
+        error: error.message
+      });
+    }
+  }
 }
 
 module.exports = new PlayersController();
