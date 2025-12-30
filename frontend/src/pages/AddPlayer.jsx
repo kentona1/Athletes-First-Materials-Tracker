@@ -262,7 +262,8 @@ function AddPlayer() {
               const transferResponse = await axios.get('/api/players/transfer-data', {
                 params: {
                   name: player.name,
-                  school: normalizedSchoolName // Pass current school for verification
+                  school: normalizedSchoolName, // Pass current school for verification
+                  recruitingYear: recruitingYear || undefined // Pass recruiting year for better search range
                 }
               });
 

@@ -721,7 +721,7 @@ class PlayersController {
   // Get transfer portal data from CFBD
   async getTransferData(req, res) {
     try {
-      const { name, year, school } = req.query;
+      const { name, year, school, recruitingYear } = req.query;
 
       if (!name) {
         return res.status(400).json({
@@ -738,11 +738,26 @@ class PlayersController {
         });
       }
 
-      console.log('🔄 Fetching transfer portal data for:', name, 'school:', school);
+      console.log('🔄 Fetching transfer portal data for:', name, 'school:', school, 'recruitingYear:', recruitingYear);
 
-      // Try multiple years if year not specified
+      // Determine years to search based on available data
       const currentYear = new Date().getFullYear();
-      const yearsToTry = year ? [parseInt(year)] : [currentYear, currentYear - 1, currentYear - 2, currentYear - 3, currentYear - 4, currentYear - 5];
+      let yearsToTry;
+
+      if (year) {
+        // If specific year provided, use that
+        yearsToTry = [parseInt(year)];
+        console.log('📅 Using specific year:', year);
+      } else if (recruitingYear) {
+        // If recruiting year available, search forward from signing year (covers college career)
+        const startYear = parseInt(recruitingYear);
+        yearsToTry = [startYear, startYear + 1, startYear + 2, startYear + 3, startYear + 4, startYear + 5];
+        console.log('📅 Searching from recruiting year forward:', yearsToTry);
+      } else {
+        // Fall back to searching backwards from current year
+        yearsToTry = [currentYear, currentYear - 1, currentYear - 2, currentYear - 3, currentYear - 4, currentYear - 5];
+        console.log('📅 Searching backwards from current year:', yearsToTry);
+      }
 
       let allTransfers = [];
 
