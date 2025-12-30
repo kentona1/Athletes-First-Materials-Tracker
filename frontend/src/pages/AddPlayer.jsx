@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from '../api/axios';
+import SchoolAutocomplete from '../components/SchoolAutocomplete';
 
 function AddPlayer() {
   const navigate = useNavigate();
@@ -512,11 +513,15 @@ function AddPlayer() {
         <div className="form-row">
           <div className="form-group">
             <label>School *</label>
-            <input
-              type="text"
-              name="school"
+            <SchoolAutocomplete
               value={formData.school}
-              onChange={handleChange}
+              onChange={(school, conference) => {
+                setFormData({
+                  ...formData,
+                  school: school,
+                  conference: conference
+                });
+              }}
               required
             />
           </div>
@@ -528,6 +533,8 @@ function AddPlayer() {
               name="conference"
               value={formData.conference}
               onChange={handleChange}
+              disabled
+              style={{ background: '#f0f0f0', color: '#666' }}
             />
           </div>
         </div>
