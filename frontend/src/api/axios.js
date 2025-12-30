@@ -1,7 +1,14 @@
 import axios from 'axios';
 
 // Configure axios with the backend URL
-const API_URL = process.env.REACT_APP_API_URL || 'https://athletes-first-materials-tracker-back-end.up.railway.app';
+let API_URL = process.env.REACT_APP_API_URL || 'https://athletes-first-materials-tracker-back-end.up.railway.app';
+
+// Ensure URL has protocol
+if (API_URL && !API_URL.startsWith('http://') && !API_URL.startsWith('https://')) {
+  API_URL = 'https://' + API_URL;
+}
+
+console.log('🔧 Configured API URL:', API_URL);
 
 const axiosInstance = axios.create({
   baseURL: API_URL,
