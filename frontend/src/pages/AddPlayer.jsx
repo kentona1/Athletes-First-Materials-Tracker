@@ -58,32 +58,64 @@ function AddPlayer() {
 
       console.log('Fetching details for ESPN ID:', espnId);
 
-      const response = await axios.get(`/api/players/espn-details/${espnId}`);
-      const playerData = response.data.data;
+      // Try to fetch detailed data, but fall back to search data if it fails
+      try {
+        const response = await axios.get(`/api/players/espn-details/${espnId}`);
+        const playerData = response.data.data;
 
-      console.log('Player data:', playerData);
+        console.log('✅ Got detailed player data:', playerData);
 
-      // Auto-populate form
-      setFormData({
-        name: playerData.name || '',
-        position: playerData.position || '',
-        school: playerData.school || '',
-        conference: playerData.conference || '',
-        hometown: playerData.hometown || '',
-        state: playerData.state || '',
-        height: playerData.height || '',
-        weight: playerData.weight ? parseInt(playerData.weight) : '',
-        class_year: playerData.class_year || '',
-        eligibility_year: new Date().getFullYear(),
-        espn_id: playerData.espn_id || '',
-        photo_url: playerData.photo_url || ''
-      });
+        // Auto-populate form with detailed data
+        setFormData({
+          name: playerData.name || player.name || '',
+          position: playerData.position || '',
+          school: playerData.school || player.school || '',
+          conference: playerData.conference || '',
+          hometown: playerData.hometown || '',
+          state: playerData.state || '',
+          height: playerData.height || '',
+          weight: playerData.weight ? parseInt(playerData.weight) : '',
+          class_year: playerData.class_year || '',
+          eligibility_year: new Date().getFullYear(),
+          espn_id: espnId || '',
+          photo_url: playerData.photo_url || player.image || ''
+        });
 
-      setSelectedPlayer(playerData);
+        setSelectedPlayer({
+          ...playerData,
+          photo_url: playerData.photo_url || player.image
+        });
+      } catch (detailError) {
+        console.warn('⚠️ Could not fetch detailed data, using search data:', detailError.message);
+
+        // Fall back to search result data
+        setFormData({
+          name: player.name || '',
+          position: '', // Not in search results
+          school: player.school || '',
+          conference: '', // Not in search results
+          hometown: '', // Not in search results
+          state: '', // Not in search results
+          height: '', // Not in search results
+          weight: '', // Not in search results
+          class_year: '', // Not in search results
+          eligibility_year: new Date().getFullYear(),
+          espn_id: espnId || '',
+          photo_url: player.image || ''
+        });
+
+        setSelectedPlayer({
+          name: player.name,
+          school: player.school,
+          photo_url: player.image,
+          espn_id: espnId
+        });
+      }
+
       setSearchResults([]); // Clear search results
       setSearchQuery(''); // Clear search
     } catch (error) {
-      console.error('Error fetching player details:', error);
+      console.error('Error selecting player:', error);
       alert('Error loading player data. You can still enter manually.');
     }
   };
