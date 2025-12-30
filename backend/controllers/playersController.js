@@ -128,6 +128,13 @@ class PlayersController {
         [id]
       );
 
+      // Get transfer history
+      const transfers = await db.query(`
+        SELECT * FROM player_transfers
+        WHERE player_id = ?
+        ORDER BY transfer_year DESC
+      `, [id]);
+
       res.json({
         success: true,
         data: {
@@ -135,7 +142,8 @@ class PlayersController {
           agents,
           materials,
           contacts,
-          outcome
+          outcome,
+          transfers
         }
       });
     } catch (error) {
@@ -707,6 +715,145 @@ class PlayersController {
         success: false,
         error: error.message
       });
+    }
+  }
+
+  // Get transfer portal data from CFBD
+  async getTransferData(req, res) {
+    try {
+      const { name, year } = req.query;
+
+      if (!name) {
+        return res.status(400).json({
+          success: false,
+          error: 'Player name required'
+        });
+      }
+
+      const apiKey = process.env.CFBD_API_KEY;
+      if (!apiKey) {
+        return res.status(500).json({
+          success: false,
+          error: 'CFBD API key not configured'
+        });
+      }
+
+      console.log('🔄 Fetching transfer portal data for:', name);
+
+      // Try multiple years if year not specified
+      const currentYear = new Date().getFullYear();
+      const yearsToTry = year ? [parseInt(year)] : [currentYear, currentYear - 1, currentYear - 2, currentYear - 3, currentYear - 4];
+
+      let allTransfers = [];
+
+      for (const searchYear of yearsToTry) {
+        try {
+          console.log(`  Checking transfer portal for year ${searchYear}...`);
+          const response = await axios.get(
+            'https://api.collegefootballdata.com/player/portal',
+            {
+              params: { year: searchYear },
+              headers: { 'Authorization': `Bearer ${apiKey}` }
+            }
+          );
+
+          const yearTransfers = response.data || [];
+          allTransfers = allTransfers.concat(yearTransfers);
+          console.log(`  Found ${yearTransfers.length} transfers in ${searchYear}`);
+        } catch (yearError) {
+          console.warn(`  Year ${searchYear} failed:`, yearError.message);
+        }
+      }
+
+      // Find matching player by name
+      const nameToMatch = name.toLowerCase().trim();
+      const matchingTransfers = allTransfers.filter(transfer => {
+        const transferName = transfer.firstName && transfer.lastName
+          ? `${transfer.firstName} ${transfer.lastName}`.toLowerCase()
+          : '';
+        return transferName.includes(nameToMatch) || nameToMatch.includes(transferName);
+      });
+
+      console.log('✅ Found', matchingTransfers.length, 'transfer records');
+
+      if (matchingTransfers.length > 0) {
+        // Format transfer data
+        const formattedTransfers = matchingTransfers.map(transfer => ({
+          playerName: `${transfer.firstName} ${transfer.lastName}`,
+          fromSchool: transfer.origin,
+          toSchool: transfer.destination,
+          transferSeason: transfer.season,
+          transferYear: parseInt(transfer.season),
+          eligibilityRemaining: transfer.eligibility,
+          transferType: 'Portal', // CFBD data is all portal transfers
+          transferDate: transfer.transferDate
+        }));
+
+        res.json({ success: true, data: formattedTransfers });
+      } else {
+        res.json({ success: true, data: [] });
+      }
+    } catch (error) {
+      console.error('Error fetching transfer data:', error.message);
+      res.status(500).json({
+        success: false,
+        error: error.message
+      });
+    }
+  }
+
+  // Get player's transfer history from database
+  async getPlayerTransfers(req, res) {
+    try {
+      const { id } = req.params;
+
+      const transfers = await db.query(`
+        SELECT * FROM player_transfers
+        WHERE player_id = ?
+        ORDER BY transfer_year DESC
+      `, [id]);
+
+      res.json({ success: true, data: transfers });
+    } catch (error) {
+      console.error('Error fetching player transfers:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  }
+
+  // Add transfer to player's history
+  async addPlayerTransfer(req, res) {
+    try {
+      const { player_id, from_school, to_school, transfer_season, transfer_year, eligibility_remaining, transfer_type } = req.body;
+
+      if (!player_id || !to_school) {
+        return res.status(400).json({
+          success: false,
+          error: 'player_id and to_school are required'
+        });
+      }
+
+      const result = await db.run(`
+        INSERT INTO player_transfers (
+          player_id, from_school, to_school, transfer_season,
+          transfer_year, eligibility_remaining, transfer_type
+        ) VALUES (?, ?, ?, ?, ?, ?, ?)
+      `, [
+        player_id,
+        from_school || null,
+        to_school,
+        transfer_season || null,
+        transfer_year || null,
+        eligibility_remaining || null,
+        transfer_type || 'Portal'
+      ]);
+
+      res.json({
+        success: true,
+        data: { id: result.id, player_id, from_school, to_school, transfer_year }
+      });
+    } catch (error) {
+      console.error('Error adding transfer:', error);
+      res.status(500).json({ success: false, error: error.message });
     }
   }
 }
