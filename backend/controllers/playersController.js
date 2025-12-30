@@ -319,6 +319,8 @@ class PlayersController {
     try {
       const { id } = req.params;
 
+      console.log('🔍 Fetching ESPN player details for ID:', id);
+
       if (!id) {
         return res.status(400).json({
           success: false,
@@ -331,14 +333,20 @@ class PlayersController {
         `https://site.api.espn.com/apis/site/v2/sports/football/college-football/athletes/${id}`
       );
 
+      console.log('📊 ESPN Player Response structure:', Object.keys(response.data));
+      console.log('📊 Full Player Response:', JSON.stringify(response.data, null, 2));
+
       const player = response.data?.athlete;
 
       if (!player) {
+        console.error('❌ No athlete data in response');
         return res.status(404).json({
           success: false,
           error: 'Player not found'
         });
       }
+
+      console.log('👤 Player data keys:', Object.keys(player));
 
       // Extract and format player data
       const formattedData = {
@@ -361,13 +369,18 @@ class PlayersController {
         links: player.links
       };
 
+      console.log('✅ Formatted player data:', formattedData);
+
       res.json({ success: true, data: formattedData });
     } catch (error) {
-      console.error('Error fetching ESPN player details:', error.message);
+      console.error('❌ Error fetching ESPN player details:', error.message);
+      console.error('❌ Error response:', error.response?.data);
+      console.error('❌ Error status:', error.response?.status);
       res.status(500).json({
         success: false,
         error: 'ESPN API error',
-        message: error.message
+        message: error.message,
+        details: error.response?.data || error.toString()
       });
     }
   }
