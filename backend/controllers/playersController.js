@@ -800,41 +800,37 @@ class PlayersController {
 
       console.log('📊 Found', matchingTransfers.length, 'exact name matches');
 
-      // If we have a current school, FILTER to only transfers that lead to current school
+      // If we have a current school, VERIFY this is the right player (not a different person with same name)
       if (school && matchingTransfers.length > 0) {
-        console.log('🏫 Filtering transfers for school:', school);
+        console.log('🏫 Verifying transfers match player at:', school);
 
-        // Only keep transfers where destination matches current school
-        const filteredTransfers = matchingTransfers.filter(t => {
+        // Check if current school appears ANYWHERE in the transfer chain (origin OR destination)
+        const schoolAppearsInChain = matchingTransfers.some(t => {
+          const originSchool = t.origin?.toLowerCase() || '';
           const destSchool = t.destination?.toLowerCase() || '';
           const currentSchool = school.toLowerCase();
-          const matches = destSchool.includes(currentSchool) || currentSchool.includes(destSchool);
 
-          if (!matches) {
-            console.log('  ❌ Filtering out:', `${t.origin} → ${t.destination} (${t.season}) - doesn't match ${school}`);
-          } else {
-            console.log('  ✅ Keeping:', `${t.origin} → ${t.destination} (${t.season})`);
-          }
+          const matchesOrigin = originSchool.includes(currentSchool) || currentSchool.includes(originSchool);
+          const matchesDest = destSchool.includes(currentSchool) || currentSchool.includes(destSchool);
 
-          return matches;
+          return matchesOrigin || matchesDest;
         });
 
-        if (filteredTransfers.length === 0) {
-          console.warn('⚠️ No transfers match current school. These may be for a different player with the same name.');
+        if (!schoolAppearsInChain) {
+          console.warn('⚠️ Current school does not appear anywhere in transfer chain - may be different player with same name.');
           console.warn('   Current school:', school);
-          console.warn('   Transfer destinations:', matchingTransfers.map(t => t.destination).join(', '));
+          console.warn('   Transfer chain:', matchingTransfers.map(t => `${t.origin} → ${t.destination}`).join(', '));
 
           // Return empty - don't show potentially wrong data
           return res.json({
             success: true,
             data: [],
-            warning: 'Found transfers but none match current school - may be different player'
+            warning: 'Found transfers but current school not in chain - may be different player'
           });
         }
 
-        // Use filtered transfers instead
-        matchingTransfers = filteredTransfers;
-        console.log('✅ Filtered to', matchingTransfers.length, 'transfers matching current school');
+        console.log('✅ Verified: Current school appears in transfer chain');
+        console.log('✅ Returning ALL', matchingTransfers.length, 'transfers for this player');
       }
 
       console.log('✅ Found', matchingTransfers.length, 'verified transfer records');
