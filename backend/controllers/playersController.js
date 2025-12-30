@@ -266,24 +266,36 @@ class PlayersController {
       console.log('📊 ESPN Response structure:', Object.keys(searchResponse.data));
       console.log('📊 Full ESPN Response:', JSON.stringify(searchResponse.data, null, 2));
 
-      // Extract player results
-      const players = searchResponse.data?.results || [];
+      // Extract player results - ESPN returns nested structure
+      const resultGroups = searchResponse.data?.results || [];
 
-      console.log('👥 Found', players.length, 'players');
-      if (players.length > 0) {
-        console.log('🏈 First player structure:', JSON.stringify(players[0], null, 2));
+      // Flatten all player contents from all result groups
+      let allPlayers = [];
+      resultGroups.forEach(group => {
+        if (group.type === 'player' && group.contents) {
+          allPlayers = allPlayers.concat(group.contents);
+        }
+      });
+
+      console.log('👥 Found', allPlayers.length, 'players');
+      if (allPlayers.length > 0) {
+        console.log('🏈 First player data:', JSON.stringify(allPlayers[0], null, 2));
       }
 
       // Format results for frontend
-      const formattedPlayers = players.map(player => {
+      const formattedPlayers = allPlayers.map(player => {
+        // Extract player ID from UID (format: s:20~l:23~a:4602019)
+        const playerId = player.uid?.split('~a:')[1] || player.id;
+
         const formatted = {
-          id: player.id,
-          name: player.displayName || player.name || player.text,
+          id: playerId,
+          name: player.displayName || player.name,
           position: player.position?.abbreviation || player.position,
-          school: player.team?.displayName || player.team?.name || player.team,
-          league: player.league?.abbreviation || player.league,
-          image: player.image?.url || player.imageUrl,
-          url: player.url || player.link
+          school: player.subtitle, // ESPN uses subtitle for team/school
+          sport: player.sport,
+          league: player.defaultLeagueSlug,
+          image: player.image?.default || player.image?.defaultDark,
+          url: player.link?.web
         };
         console.log('✨ Formatted:', formatted);
         return formatted;
