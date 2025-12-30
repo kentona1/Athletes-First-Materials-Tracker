@@ -210,28 +210,7 @@ function AddPlayer() {
               }
             }
 
-            // Fetch transfer portal data
-            try {
-              console.log('🔄 Fetching transfer portal data...');
-              const transferResponse = await axios.get('/api/players/transfer-data', {
-                params: { name: player.name }
-              });
-
-              const transfers = transferResponse.data.data || [];
-              console.log('📊 Transfer portal returned', transfers.length, 'results');
-
-              if (transfers.length > 0) {
-                setTransferData(transfers);
-                console.log('✅ Found transfer history:', transfers);
-              } else {
-                setTransferData([]);
-              }
-            } catch (transferError) {
-              console.warn('⚠️ Transfer data fetch failed:', transferError.message);
-              setTransferData([]);
-            }
-
-            // Merge ESPN + CFBD + Recruiting data
+            // Merge ESPN + CFBD + Recruiting data FIRST (to get current school)
             const hometown = recruitingData?.hometown || cfbdPlayer.hometown || '';
             const state = recruitingData?.state || cfbdPlayer.state || '';
             const recruitingYear = recruitingData?.classYear || '';
@@ -275,6 +254,33 @@ function AddPlayer() {
               } catch (lookupError) {
                 console.warn('⚠️ School lookup failed:', lookupError.message);
               }
+            }
+
+            // Fetch transfer portal data (AFTER we have normalized school name)
+            try {
+              console.log('🔄 Fetching transfer portal data...');
+              const transferResponse = await axios.get('/api/players/transfer-data', {
+                params: {
+                  name: player.name,
+                  school: normalizedSchoolName // Pass current school for verification
+                }
+              });
+
+              const transfers = transferResponse.data.data || [];
+              console.log('📊 Transfer portal returned', transfers.length, 'results');
+
+              if (transfers.length > 0) {
+                setTransferData(transfers);
+                console.log('✅ Found verified transfer history:', transfers);
+              } else {
+                setTransferData([]);
+                if (transferResponse.data.warning) {
+                  console.warn('⚠️', transferResponse.data.warning);
+                }
+              }
+            } catch (transferError) {
+              console.warn('⚠️ Transfer data fetch failed:', transferError.message);
+              setTransferData([]);
             }
 
             setFormData({

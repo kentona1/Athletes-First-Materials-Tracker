@@ -721,7 +721,7 @@ class PlayersController {
   // Get transfer portal data from CFBD
   async getTransferData(req, res) {
     try {
-      const { name, year } = req.query;
+      const { name, year, school } = req.query;
 
       if (!name) {
         return res.status(400).json({
@@ -738,7 +738,7 @@ class PlayersController {
         });
       }
 
-      console.log('🔄 Fetching transfer portal data for:', name);
+      console.log('🔄 Fetching transfer portal data for:', name, 'school:', school);
 
       // Try multiple years if year not specified
       const currentYear = new Date().getFullYear();
@@ -765,16 +765,52 @@ class PlayersController {
         }
       }
 
-      // Find matching player by name
+      // Find matching player by EXACT name match
       const nameToMatch = name.toLowerCase().trim();
-      const matchingTransfers = allTransfers.filter(transfer => {
-        const transferName = transfer.firstName && transfer.lastName
-          ? `${transfer.firstName} ${transfer.lastName}`.toLowerCase()
-          : '';
-        return transferName.includes(nameToMatch) || nameToMatch.includes(transferName);
+      const nameParts = nameToMatch.split(' ');
+      const firstName = nameParts[0];
+      const lastName = nameParts[nameParts.length - 1];
+
+      let matchingTransfers = allTransfers.filter(transfer => {
+        const transferFullName = `${transfer.firstName} ${transfer.lastName}`.toLowerCase().trim();
+        const transferFirstName = transfer.firstName?.toLowerCase().trim() || '';
+        const transferLastName = transfer.lastName?.toLowerCase().trim() || '';
+
+        // Require exact name match (not partial)
+        const exactMatch = transferFullName === nameToMatch;
+        const firstLastMatch = transferFirstName === firstName && transferLastName === lastName;
+
+        return exactMatch || firstLastMatch;
       });
 
-      console.log('✅ Found', matchingTransfers.length, 'transfer records');
+      console.log('📊 Found', matchingTransfers.length, 'exact name matches');
+
+      // If we have a current school, verify the transfer chain makes sense
+      if (school && matchingTransfers.length > 0) {
+        console.log('🏫 Verifying transfer chain for school:', school);
+
+        // Check if any transfer destination matches current school
+        const hasMatchingDestination = matchingTransfers.some(t => {
+          const destSchool = t.destination?.toLowerCase() || '';
+          const currentSchool = school.toLowerCase();
+          return destSchool.includes(currentSchool) || currentSchool.includes(destSchool);
+        });
+
+        if (!hasMatchingDestination) {
+          console.warn('⚠️ No transfers match current school. These may be for a different player with the same name.');
+          console.warn('   Current school:', school);
+          console.warn('   Transfer destinations:', matchingTransfers.map(t => t.destination).join(', '));
+
+          // Return empty - don't show potentially wrong data
+          return res.json({
+            success: true,
+            data: [],
+            warning: 'Found transfers but none match current school - may be different player'
+          });
+        }
+      }
+
+      console.log('✅ Found', matchingTransfers.length, 'verified transfer records');
 
       if (matchingTransfers.length > 0) {
         // Format transfer data
