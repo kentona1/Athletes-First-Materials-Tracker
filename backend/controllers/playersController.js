@@ -742,7 +742,7 @@ class PlayersController {
 
       // Try multiple years if year not specified
       const currentYear = new Date().getFullYear();
-      const yearsToTry = year ? [parseInt(year)] : [currentYear, currentYear - 1, currentYear - 2, currentYear - 3, currentYear - 4];
+      const yearsToTry = year ? [parseInt(year)] : [currentYear, currentYear - 1, currentYear - 2, currentYear - 3, currentYear - 4, currentYear - 5];
 
       let allTransfers = [];
 
