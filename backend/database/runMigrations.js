@@ -58,6 +58,33 @@ async function runMigrations() {
       console.log('✅ material_events table already exists');
     }
 
+    // Check if first_name and last_name columns exist in agents table
+    const agentColumns = await db.query("PRAGMA table_info(agents)");
+    const hasFirstName = agentColumns.some(col => col.name === 'first_name');
+    const hasLastName = agentColumns.some(col => col.name === 'last_name');
+
+    if (!hasFirstName || !hasLastName) {
+      console.log('📦 Running migration: Add first_name and last_name to agents...');
+
+      if (!hasFirstName) {
+        await db.run(`
+          ALTER TABLE agents
+          ADD COLUMN first_name TEXT
+        `);
+      }
+
+      if (!hasLastName) {
+        await db.run(`
+          ALTER TABLE agents
+          ADD COLUMN last_name TEXT
+        `);
+      }
+
+      console.log('✅ Migration completed: first_name and last_name columns added');
+    } else {
+      console.log('✅ Migration already applied: first_name and last_name columns exist');
+    }
+
     console.log('✅ All migrations completed successfully');
   } catch (error) {
     console.error('❌ Migration error:', error);

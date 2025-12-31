@@ -4,15 +4,17 @@ class AgentsController {
   // Get all agents
   async getAllAgents(req, res) {
     try {
+      const { includeInactive } = req.query;
+
       const agents = await db.query(`
-        SELECT 
+        SELECT
           a.*,
           COUNT(DISTINCT pa.player_id) as player_count,
           COUNT(DISTINCT pm.id) as materials_count
         FROM agents a
         LEFT JOIN player_agents pa ON a.id = pa.agent_id
         LEFT JOIN player_materials pm ON a.id = pm.agent_id
-        WHERE a.active = 1
+        ${includeInactive === 'true' ? '' : 'WHERE a.active = 1'}
         GROUP BY a.id
         ORDER BY a.name
       `);

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from '../api/axios';
 import SchoolAutocomplete from '../components/SchoolAutocomplete';
@@ -10,6 +10,8 @@ function AddPlayer() {
   const [searching, setSearching] = useState(false);
   const [selectedPlayer, setSelectedPlayer] = useState(null);
   const [transferData, setTransferData] = useState([]);
+  const [agents, setAgents] = useState([]);
+  const [selectedAgents, setSelectedAgents] = useState([]);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -34,6 +36,20 @@ function AddPlayer() {
     recruiting_position_ranking: null,
     original_commitment: ''
   });
+
+  // Fetch agents on mount
+  useEffect(() => {
+    fetchAgents();
+  }, []);
+
+  const fetchAgents = async () => {
+    try {
+      const response = await axios.get('/api/agents');
+      setAgents(response.data.data || []);
+    } catch (error) {
+      console.error('Error fetching agents:', error);
+    }
+  };
 
   // Search ESPN for players
   const handleSearch = async (e) => {
@@ -413,6 +429,22 @@ function AddPlayer() {
         console.log('✅ Transfer history saved');
       }
 
+      // Assign agents if any selected
+      if (selectedAgents.length > 0) {
+        console.log(`👥 Assigning ${selectedAgents.length} agents...`);
+        for (const agentId of selectedAgents) {
+          try {
+            await axios.post('/api/players/assign-agent', {
+              playerId,
+              agentId
+            });
+          } catch (agentError) {
+            console.warn('⚠️ Failed to assign agent:', agentError.message);
+          }
+        }
+        console.log('✅ Agents assigned');
+      }
+
       alert('Player added successfully!');
       navigate(`/players/${playerId}`);
     } catch (error) {
@@ -687,6 +719,38 @@ function AddPlayer() {
             />
           </div>
         )}
+
+        <div className="form-group full-width">
+          <label>Assign Recruiting Agents</label>
+          <div style={{ border: '1px solid #ddd', padding: '1rem', borderRadius: '4px', maxHeight: '200px', overflowY: 'auto' }}>
+            {agents.length === 0 ? (
+              <p style={{ color: '#999', fontStyle: 'italic' }}>No agents available</p>
+            ) : (
+              agents.map(agent => (
+                <div key={agent.id} style={{ marginBottom: '0.5rem' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={selectedAgents.includes(agent.id)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelectedAgents([...selectedAgents, agent.id]);
+                        } else {
+                          setSelectedAgents(selectedAgents.filter(id => id !== agent.id));
+                        }
+                      }}
+                      style={{ marginRight: '0.5rem' }}
+                    />
+                    <span>{agent.first_name || agent.last_name ? `${agent.first_name || ''} ${agent.last_name || ''}`.trim() : agent.name}</span>
+                  </label>
+                </div>
+              ))
+            )}
+          </div>
+          <small style={{ color: '#666', display: 'block', marginTop: '0.5rem' }}>
+            Select the agents who will be recruiting this player
+          </small>
+        </div>
 
         <div className="form-actions">
           <button type="button" onClick={() => navigate('/players')} className="btn btn-secondary">

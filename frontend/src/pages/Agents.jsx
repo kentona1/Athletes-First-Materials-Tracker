@@ -8,7 +8,7 @@ function Agents() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('performance'); // 'performance' or 'management'
   const [editingAgent, setEditingAgent] = useState(null);
-  const [editForm, setEditForm] = useState({ name: '', email: '', phone: '' });
+  const [editForm, setEditForm] = useState({ first_name: '', last_name: '', email: '', phone: '' });
 
   useEffect(() => {
     fetchAgentsData();
@@ -29,7 +29,8 @@ function Agents() {
 
   const fetchAllAgents = async () => {
     try {
-      const agentsRes = await axios.get('/api/agents');
+      // Include inactive agents for management view
+      const agentsRes = await axios.get('/api/agents?includeInactive=true');
       setAgents(agentsRes.data.data);
     } catch (error) {
       console.error('Error fetching all agents:', error);
@@ -39,7 +40,8 @@ function Agents() {
   const handleEditClick = (agent) => {
     setEditingAgent(agent.id);
     setEditForm({
-      name: agent.name,
+      first_name: agent.first_name || agent.name?.split(' ')[0] || '',
+      last_name: agent.last_name || agent.name?.split(' ').slice(1).join(' ') || '',
       email: agent.email || '',
       phone: agent.phone || ''
     });
@@ -60,7 +62,7 @@ function Agents() {
 
   const handleCancelEdit = () => {
     setEditingAgent(null);
-    setEditForm({ name: '', email: '', phone: '' });
+    setEditForm({ first_name: '', last_name: '', email: '', phone: '' });
   };
 
   const handleToggleActive = async (agent) => {
@@ -152,7 +154,8 @@ function Agents() {
             <table>
               <thead>
                 <tr>
-                  <th>Name</th>
+                  <th>First Name</th>
+                  <th>Last Name</th>
                   <th>Email</th>
                   <th>Phone</th>
                   <th>Status</th>
@@ -167,9 +170,19 @@ function Agents() {
                         <td>
                           <input
                             type="text"
-                            value={editForm.name}
-                            onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                            value={editForm.first_name}
+                            onChange={(e) => setEditForm({ ...editForm, first_name: e.target.value })}
                             className="edit-input"
+                            placeholder="First name"
+                          />
+                        </td>
+                        <td>
+                          <input
+                            type="text"
+                            value={editForm.last_name}
+                            onChange={(e) => setEditForm({ ...editForm, last_name: e.target.value })}
+                            className="edit-input"
+                            placeholder="Last name"
                           />
                         </td>
                         <td>
@@ -211,7 +224,8 @@ function Agents() {
                       </>
                     ) : (
                       <>
-                        <td><strong>{agent.name}</strong></td>
+                        <td><strong>{agent.first_name || agent.name?.split(' ')[0] || '-'}</strong></td>
+                        <td><strong>{agent.last_name || agent.name?.split(' ').slice(1).join(' ') || '-'}</strong></td>
                         <td>{agent.email || '-'}</td>
                         <td>{agent.phone || '-'}</td>
                         <td>
