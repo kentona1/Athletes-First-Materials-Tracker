@@ -936,6 +936,66 @@ class PlayersController {
       res.status(500).json({ success: false, error: error.message });
     }
   }
+
+  // Update player outcome/status
+  async updatePlayerOutcome(req, res) {
+    try {
+      const { id } = req.params;
+      const { status, outcome_date, draft_round, draft_pick, draft_year, signed_team, notes } = req.body;
+
+      if (!status) {
+        return res.status(400).json({
+          success: false,
+          error: 'Status is required'
+        });
+      }
+
+      // Update player status
+      await db.run(
+        'UPDATE players SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+        [status, id]
+      );
+
+      // Check if outcome record exists
+      const existingOutcome = await db.get(
+        'SELECT * FROM player_outcomes WHERE player_id = ?',
+        [id]
+      );
+
+      if (existingOutcome) {
+        // Update existing outcome
+        await db.run(`
+          UPDATE player_outcomes
+          SET status = ?,
+              outcome_date = ?,
+              draft_round = ?,
+              draft_pick = ?,
+              draft_year = ?,
+              signed_team = ?,
+              notes = ?,
+              updated_at = CURRENT_TIMESTAMP
+          WHERE player_id = ?
+        `, [status, outcome_date || null, draft_round || null, draft_pick || null,
+            draft_year || null, signed_team || null, notes || null, id]);
+      } else {
+        // Create new outcome record
+        await db.run(`
+          INSERT INTO player_outcomes (
+            player_id, status, outcome_date, draft_round, draft_pick, draft_year, signed_team, notes
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        `, [id, status, outcome_date || null, draft_round || null, draft_pick || null,
+            draft_year || null, signed_team || null, notes || null]);
+      }
+
+      res.json({
+        success: true,
+        message: 'Player outcome updated successfully'
+      });
+    } catch (error) {
+      console.error('Error updating player outcome:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  }
 }
 
 module.exports = new PlayersController();

@@ -20,4 +20,7 @@ router.delete('/:id', playersController.deletePlayer.bind(playersController));
 // Agent assignment
 router.post('/assign-agent', playersController.assignAgent.bind(playersController));
 
+// Player outcome/status management
+router.put('/:id/outcome', playersController.updatePlayerOutcome.bind(playersController));
+
 module.exports = router;

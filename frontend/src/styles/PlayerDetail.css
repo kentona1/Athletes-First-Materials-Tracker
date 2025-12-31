@@ -553,3 +553,84 @@
   color: #666;
   font-style: italic;
 }
+
+/* Status editing styles */
+.status-edit-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.outcome-edit-card {
+  background: white;
+  padding: 2rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  margin-bottom: 2rem;
+  border-left: 4px solid #007bff;
+}
+
+.outcome-edit-card h2 {
+  margin-bottom: 1.5rem;
+  color: #333;
+}
+
+.outcome-edit-card .form-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.outcome-edit-card .form-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.outcome-edit-card .form-group label {
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  color: #495057;
+  font-size: 0.9rem;
+}
+
+.outcome-edit-card .form-group input,
+.outcome-edit-card .form-group select,
+.outcome-edit-card .form-group textarea {
+  padding: 0.5rem;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  font-size: 0.95rem;
+}
+
+.outcome-edit-card .form-group input:focus,
+.outcome-edit-card .form-group select:focus,
+.outcome-edit-card .form-group textarea:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 0.2rem rgba(0,123,255,0.25);
+}
+
+.outcome-edit-card .form-actions {
+  display: flex;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.btn-small {
+  padding: 0.25rem 0.75rem;
+  font-size: 0.875rem;
+  border-radius: 4px;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.btn-small.btn-secondary {
+  background-color: #6c757d;
+  color: white;
+}
+
+.btn-small.btn-secondary:hover {
+  background-color: #5a6268;
+}

@@ -16,6 +16,16 @@ function PlayerDetail() {
   const [showMaterialForm, setShowMaterialForm] = useState(false);
   const [materialTypes, setMaterialTypes] = useState([]);
   const [agents, setAgents] = useState([]);
+  const [editingStatus, setEditingStatus] = useState(false);
+  const [outcomeData, setOutcomeData] = useState({
+    status: '',
+    outcome_date: '',
+    draft_round: '',
+    draft_pick: '',
+    draft_year: '',
+    signed_team: '',
+    notes: ''
+  });
 
   const [newMaterial, setNewMaterial] = useState({
     materialTypeId: '',
@@ -76,6 +86,18 @@ function PlayerDetail() {
       const response = await axios.get(`/api/players/${id}`);
       const playerData = response.data.data;
       setPlayer(playerData);
+
+      // Initialize outcome data from player and outcome
+      const currentOutcome = playerData.outcome || {};
+      setOutcomeData({
+        status: currentOutcome.status || playerData.status || 'Active',
+        outcome_date: currentOutcome.outcome_date || '',
+        draft_round: currentOutcome.draft_round || '',
+        draft_pick: currentOutcome.draft_pick || '',
+        draft_year: currentOutcome.draft_year || '',
+        signed_team: currentOutcome.signed_team || '',
+        notes: currentOutcome.notes || ''
+      });
 
       // Fetch school data for logo
       if (playerData.school) {
@@ -143,7 +165,7 @@ function PlayerDetail() {
         playerId: id,
         ...newMaterial
       });
-      
+
       setShowMaterialForm(false);
       setNewMaterial({
         materialTypeId: '',
@@ -154,13 +176,42 @@ function PlayerDetail() {
         filePath: '',
         notes: ''
       });
-      
+
       fetchPlayerDetails();
       alert('Material logged successfully!');
     } catch (error) {
       console.error('Error adding material:', error);
       alert('Error logging material');
     }
+  };
+
+  const handleUpdateOutcome = async (e) => {
+    e.preventDefault();
+    try {
+      await axios.put(`/api/players/${id}/outcome`, outcomeData);
+
+      setEditingStatus(false);
+      fetchPlayerDetails();
+      alert('Player status updated successfully!');
+    } catch (error) {
+      console.error('Error updating player outcome:', error);
+      alert('Error updating player status');
+    }
+  };
+
+  const handleCancelStatusEdit = () => {
+    // Reset to current player data
+    const currentOutcome = player.outcome || {};
+    setOutcomeData({
+      status: currentOutcome.status || player.status || 'Active',
+      outcome_date: currentOutcome.outcome_date || '',
+      draft_round: currentOutcome.draft_round || '',
+      draft_pick: currentOutcome.draft_pick || '',
+      draft_year: currentOutcome.draft_year || '',
+      signed_team: currentOutcome.signed_team || '',
+      notes: currentOutcome.notes || ''
+    });
+    setEditingStatus(false);
   };
 
   if (loading) {
@@ -223,9 +274,26 @@ function PlayerDetail() {
           </div>
           <div className="stat-item">
             <label>Status</label>
-            <span className={`status-badge ${player.status?.toLowerCase()}`}>
-              {player.status}
-            </span>
+            <div className="status-edit-container">
+              {!editingStatus ? (
+                <>
+                  <span className={`status-badge ${(player.outcome?.status || player.status)?.toLowerCase().replace(/\s+/g, '-')}`}>
+                    {player.outcome?.status || player.status}
+                  </span>
+                  <button
+                    onClick={() => setEditingStatus(true)}
+                    className="btn-small btn-secondary"
+                    style={{ marginLeft: '8px' }}
+                  >
+                    Edit
+                  </button>
+                </>
+              ) : (
+                <span style={{ fontSize: '0.9em', color: '#666' }}>
+                  Editing below ↓
+                </span>
+              )}
+            </div>
           </div>
           {player.outcome?.draft_round && (
             <div className="stat-item">
@@ -248,6 +316,116 @@ function PlayerDetail() {
           </div>
         )}
       </div>
+
+      {/* Status/Outcome Editing Form */}
+      {editingStatus && (
+        <div className="outcome-edit-card">
+          <h2>Update Player Status</h2>
+          <form onSubmit={handleUpdateOutcome}>
+            <div className="form-row">
+              <div className="form-group">
+                <label>Status *</label>
+                <select
+                  value={outcomeData.status}
+                  onChange={(e) => setOutcomeData({ ...outcomeData, status: e.target.value })}
+                  required
+                >
+                  <option value="Active">Active</option>
+                  <option value="Signed">Signed</option>
+                  <option value="Missed">Missed</option>
+                  <option value="Walked Away">Walked Away</option>
+                  <option value="Returned to School">Returned to School</option>
+                  <option value="No Meeting">No Meeting</option>
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label>Outcome Date</label>
+                <input
+                  type="date"
+                  value={outcomeData.outcome_date}
+                  onChange={(e) => setOutcomeData({ ...outcomeData, outcome_date: e.target.value })}
+                />
+              </div>
+            </div>
+
+            {outcomeData.status === 'Signed' && (
+              <>
+                <div className="form-row">
+                  <div className="form-group">
+                    <label>Signed Team</label>
+                    <input
+                      type="text"
+                      value={outcomeData.signed_team}
+                      onChange={(e) => setOutcomeData({ ...outcomeData, signed_team: e.target.value })}
+                      placeholder="Team name..."
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label>Draft Year</label>
+                    <input
+                      type="number"
+                      value={outcomeData.draft_year}
+                      onChange={(e) => setOutcomeData({ ...outcomeData, draft_year: e.target.value })}
+                      placeholder="e.g., 2025"
+                    />
+                  </div>
+                </div>
+
+                <div className="form-row">
+                  <div className="form-group">
+                    <label>Draft Round</label>
+                    <input
+                      type="number"
+                      min="1"
+                      max="7"
+                      value={outcomeData.draft_round}
+                      onChange={(e) => setOutcomeData({ ...outcomeData, draft_round: e.target.value })}
+                      placeholder="1-7"
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label>Draft Pick</label>
+                    <input
+                      type="number"
+                      min="1"
+                      max="262"
+                      value={outcomeData.draft_pick}
+                      onChange={(e) => setOutcomeData({ ...outcomeData, draft_pick: e.target.value })}
+                      placeholder="Overall pick #"
+                    />
+                  </div>
+                </div>
+              </>
+            )}
+
+            <div className="form-group">
+              <label>Notes</label>
+              <textarea
+                value={outcomeData.notes}
+                onChange={(e) => setOutcomeData({ ...outcomeData, notes: e.target.value })}
+                rows="3"
+                placeholder="Additional notes about this outcome..."
+              />
+            </div>
+
+            <div className="form-actions">
+              <button type="submit" className="btn btn-primary">
+                Save Status
+              </button>
+              <button
+                type="button"
+                onClick={handleCancelStatusEdit}
+                className="btn btn-secondary"
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
 
       {/* Recruiting Profile Section */}
       {(player.recruiting_stars || player.recruiting_rating || player.recruiting_ranking || player.high_school) && (
