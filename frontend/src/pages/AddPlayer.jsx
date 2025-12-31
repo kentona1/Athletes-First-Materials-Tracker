@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from '../api/axios';
 import SchoolAutocomplete from '../components/SchoolAutocomplete';
+import '../styles/AddPlayer.css';
 
 function AddPlayer() {
   const navigate = useNavigate();
@@ -484,6 +485,37 @@ function AddPlayer() {
     });
   };
 
+  // Get agent initials for avatar
+  const getAgentInitials = (agent) => {
+    if (agent.first_name && agent.last_name) {
+      return `${agent.first_name[0]}${agent.last_name[0]}`.toUpperCase();
+    } else if (agent.name) {
+      const parts = agent.name.split(' ');
+      if (parts.length >= 2) {
+        return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+      }
+      return agent.name.substring(0, 2).toUpperCase();
+    }
+    return '?';
+  };
+
+  // Get agent display name
+  const getAgentDisplayName = (agent) => {
+    if (agent.first_name || agent.last_name) {
+      return `${agent.first_name || ''} ${agent.last_name || ''}`.trim();
+    }
+    return agent.name || 'Unknown Agent';
+  };
+
+  // Toggle agent selection
+  const toggleAgentSelection = (agentId) => {
+    if (selectedAgents.includes(agentId)) {
+      setSelectedAgents(selectedAgents.filter(id => id !== agentId));
+    } else {
+      setSelectedAgents([...selectedAgents, agentId]);
+    }
+  };
+
   return (
     <div className="add-player">
       <h2>Add New Player</h2>
@@ -720,35 +752,38 @@ function AddPlayer() {
           </div>
         )}
 
-        <div className="form-group full-width">
-          <label>Assign Recruiting Agents</label>
-          <div style={{ border: '1px solid #ddd', padding: '1rem', borderRadius: '4px', maxHeight: '200px', overflowY: 'auto' }}>
-            {agents.length === 0 ? (
-              <p style={{ color: '#999', fontStyle: 'italic' }}>No agents available</p>
-            ) : (
-              agents.map(agent => (
-                <div key={agent.id} style={{ marginBottom: '0.5rem' }}>
-                  <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
-                    <input
-                      type="checkbox"
-                      checked={selectedAgents.includes(agent.id)}
-                      onChange={(e) => {
-                        if (e.target.checked) {
-                          setSelectedAgents([...selectedAgents, agent.id]);
-                        } else {
-                          setSelectedAgents(selectedAgents.filter(id => id !== agent.id));
-                        }
-                      }}
-                      style={{ marginRight: '0.5rem' }}
-                    />
-                    <span>{agent.first_name || agent.last_name ? `${agent.first_name || ''} ${agent.last_name || ''}`.trim() : agent.name}</span>
-                  </label>
-                </div>
-              ))
+        <div className="agent-assignment-section">
+          <label>
+            Assign Recruiting Agents
+            {selectedAgents.length > 0 && (
+              <span className="agent-selection-counter">{selectedAgents.length} selected</span>
             )}
-          </div>
-          <small style={{ color: '#666', display: 'block', marginTop: '0.5rem' }}>
-            Select the agents who will be recruiting this player
+          </label>
+          {agents.length === 0 ? (
+            <div className="agents-empty-state">
+              No agents available
+            </div>
+          ) : (
+            <div className="agents-grid">
+              {agents.map(agent => (
+                <div
+                  key={agent.id}
+                  className={`agent-card ${selectedAgents.includes(agent.id) ? 'selected' : ''}`}
+                  onClick={() => toggleAgentSelection(agent.id)}
+                >
+                  <div className="agent-card-checkbox"></div>
+                  <div className="agent-card-initials">
+                    {getAgentInitials(agent)}
+                  </div>
+                  <div className="agent-card-name">
+                    {getAgentDisplayName(agent)}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          <small className="agent-assignment-help">
+            Click on agent cards to assign them to this player
           </small>
         </div>
 

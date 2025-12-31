@@ -116,9 +116,14 @@ function AdvancedHeatMap({ filters = {} }) {
   const updateDimensions = () => {
     const container = document.querySelector('.advanced-heat-map');
     if (container) {
+      // Account for padding (2rem = 32px on each side)
+      const padding = 64; // 2rem * 2 sides
+      const availableWidth = container.offsetWidth - padding;
+      const availableHeight = Math.min(availableWidth * 0.6, 700 - padding);
+
       setDimensions({
-        width: container.offsetWidth,
-        height: Math.min(container.offsetWidth * 0.6, 700)
+        width: Math.max(availableWidth, 100),
+        height: Math.max(availableHeight, 100)
       });
     }
   };
@@ -187,10 +192,23 @@ function AdvancedHeatMap({ filters = {} }) {
 
   const drawHeatMap = () => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    if (!canvas) {
+      console.warn('Canvas ref not available');
+      return;
+    }
 
     const ctx = canvas.getContext('2d');
+    if (!ctx) {
+      console.warn('Canvas context not available');
+      return;
+    }
+
     ctx.clearRect(0, 0, dimensions.width, dimensions.height);
+
+    if (Object.keys(schoolData).length === 0) {
+      console.log('No school data to draw');
+      return;
+    }
 
     const maxCount = Math.max(...Object.values(schoolData).map(s => s.count), 1);
 
@@ -207,6 +225,8 @@ function AdvancedHeatMap({ filters = {} }) {
       ctx.fillStyle = gradient;
       ctx.fillRect(pos.x - radius, pos.y - radius, radius * 2, radius * 2);
     });
+
+    console.log(`Heat map drawn with ${Object.keys(schoolData).length} schools`);
   };
 
   const handleSchoolClick = (school) => {
