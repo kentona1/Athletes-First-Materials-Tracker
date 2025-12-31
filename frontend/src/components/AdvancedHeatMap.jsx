@@ -233,22 +233,31 @@ function AdvancedHeatMap({ filters = {} }) {
         viewBox={`0 0 ${dimensions.width} ${dimensions.height}`}
         style={{ width: dimensions.width, height: dimensions.height }}
       >
-        {/* US State outlines - simplified SVG paths would go here */}
-        {/* For production, import actual state boundary data */}
-        
-        {/* School dots */}
+        {/* US Map Outline */}
+        <rect
+          x="0"
+          y="0"
+          width={dimensions.width}
+          height={dimensions.height}
+          fill="none"
+          stroke="rgba(255, 255, 255, 0.2)"
+          strokeWidth="2"
+          strokeDasharray="5,5"
+        />
+
+        {/* School dots - smaller and more precise */}
         {Object.entries(schoolData).map(([school, data]) => {
           const pos = latLngToXY(data.coords.lat, data.coords.lng);
-          const dotSize = 3 + (data.count / maxCount) * 8;
+          const dotSize = 2 + (data.count / maxCount) * 4; // Smaller dots: 2-6px instead of 3-11px
 
           return (
             <g key={school}>
-              {/* Glow effect */}
+              {/* Glow effect - reduced */}
               <circle
                 cx={pos.x}
                 cy={pos.y}
-                r={dotSize + 3}
-                fill="rgba(255, 255, 255, 0.3)"
+                r={dotSize + 2}
+                fill="rgba(255, 255, 255, 0.2)"
                 className="school-glow"
               />
               {/* Main dot */}
