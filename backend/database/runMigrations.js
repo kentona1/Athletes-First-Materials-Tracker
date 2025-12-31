@@ -5,8 +5,8 @@ const path = require('path');
 async function runMigrations() {
   try {
     // Check if event_id column already exists in player_materials
-    const columns = await db.query("PRAGMA table_info(player_materials)");
-    const hasEventId = columns.some(col => col.name === 'event_id');
+    const materialColumns = await db.query("PRAGMA table_info(player_materials)");
+    const hasEventId = materialColumns.some(col => col.name === 'event_id');
 
     if (!hasEventId) {
       console.log('📦 Running migration: Add event_id to player_materials...');
@@ -20,6 +20,24 @@ async function runMigrations() {
       console.log('✅ Migration completed: event_id column added');
     } else {
       console.log('✅ Migration already applied: event_id column exists');
+    }
+
+    // Check if copies column exists in material_events
+    const eventColumns = await db.query("PRAGMA table_info(material_events)");
+    const hasCopies = eventColumns.some(col => col.name === 'copies');
+
+    if (!hasCopies) {
+      console.log('📦 Running migration: Add copies to material_events...');
+
+      // Add copies column to material_events
+      await db.run(`
+        ALTER TABLE material_events
+        ADD COLUMN copies INTEGER DEFAULT 1
+      `);
+
+      console.log('✅ Migration completed: copies column added');
+    } else {
+      console.log('✅ Migration already applied: copies column exists');
     }
 
     // Check if material_events table exists

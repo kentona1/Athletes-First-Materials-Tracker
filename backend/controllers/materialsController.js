@@ -281,7 +281,7 @@ class MaterialsController {
   // Create material event with multiple materials
   async createMaterialEvent(req, res) {
     try {
-      const { playerId, eventDate, deliveryMethod, materialIds, notes } = req.body;
+      const { playerId, eventDate, deliveryMethod, materialIds, copies, notes } = req.body;
 
       // Validate required fields
       if (!playerId || !eventDate || !deliveryMethod || !materialIds || materialIds.length === 0) {
@@ -300,11 +300,14 @@ class MaterialsController {
 
       const eventNumber = (countResult?.count || 0) + 1;
 
+      // Default copies to 1 if not provided (for Email) or use provided value
+      const copiesCount = copies || 1;
+
       // Create the event
       const eventResult = await db.run(`
-        INSERT INTO material_events (player_id, event_date, delivery_method, event_number, notes)
-        VALUES (?, ?, ?, ?, ?)
-      `, [playerId, eventDate, deliveryMethod, eventNumber, notes || null]);
+        INSERT INTO material_events (player_id, event_date, delivery_method, event_number, copies, notes)
+        VALUES (?, ?, ?, ?, ?, ?)
+      `, [playerId, eventDate, deliveryMethod, eventNumber, copiesCount, notes || null]);
 
       const eventId = eventResult.id;
 
@@ -377,7 +380,7 @@ class MaterialsController {
   async updateMaterialEvent(req, res) {
     try {
       const { eventId } = req.params;
-      const { eventDate, deliveryMethod, materialIds, notes } = req.body;
+      const { eventDate, deliveryMethod, materialIds, copies, notes } = req.body;
 
       // Update event details
       const updateFields = [];
@@ -390,6 +393,10 @@ class MaterialsController {
       if (deliveryMethod) {
         updateFields.push('delivery_method = ?');
         updateValues.push(deliveryMethod);
+      }
+      if (copies !== undefined) {
+        updateFields.push('copies = ?');
+        updateValues.push(copies);
       }
       if (notes !== undefined) {
         updateFields.push('notes = ?');

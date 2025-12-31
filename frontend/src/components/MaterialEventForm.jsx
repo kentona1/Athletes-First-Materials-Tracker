@@ -10,6 +10,7 @@ function MaterialEventForm({ playerId, onSuccess, onCancel }) {
   const [formData, setFormData] = useState({
     eventDate: new Date().toISOString().split('T')[0],
     deliveryMethod: 'Meeting',
+    copies: 1,
     selectedMaterials: [],
     notes: ''
   });
@@ -65,6 +66,7 @@ function MaterialEventForm({ playerId, onSuccess, onCancel }) {
         eventDate: formData.eventDate,
         deliveryMethod: formData.deliveryMethod,
         materialIds: formData.selectedMaterials,
+        copies: formData.deliveryMethod !== 'Email' ? formData.copies : 1,
         notes: formData.notes
       });
 
@@ -78,6 +80,7 @@ function MaterialEventForm({ playerId, onSuccess, onCancel }) {
       setFormData({
         eventDate: new Date().toISOString().split('T')[0],
         deliveryMethod: 'Meeting',
+        copies: 1,
         selectedMaterials: [],
         notes: ''
       });
@@ -88,6 +91,15 @@ function MaterialEventForm({ playerId, onSuccess, onCancel }) {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleDeliveryMethodChange = (e) => {
+    const method = e.target.value;
+    setFormData({
+      ...formData,
+      deliveryMethod: method,
+      copies: method === 'Email' ? 1 : formData.copies
+    });
   };
 
   return (
@@ -112,7 +124,7 @@ function MaterialEventForm({ playerId, onSuccess, onCancel }) {
             <label>Delivery Method *</label>
             <select
               value={formData.deliveryMethod}
-              onChange={(e) => setFormData({ ...formData, deliveryMethod: e.target.value })}
+              onChange={handleDeliveryMethodChange}
               required
             >
               <option value="Meeting">Meeting</option>
@@ -120,6 +132,21 @@ function MaterialEventForm({ playerId, onSuccess, onCancel }) {
               <option value="Email">Email</option>
             </select>
           </div>
+
+          {formData.deliveryMethod !== 'Email' && (
+            <div className="form-group">
+              <label>Copies {formData.deliveryMethod === 'Mail' ? 'Shipped' : 'Printed'} *</label>
+              <select
+                value={formData.copies}
+                onChange={(e) => setFormData({ ...formData, copies: parseInt(e.target.value) })}
+                required
+              >
+                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(num => (
+                  <option key={num} value={num}>{num}</option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
 
         <div className="materials-selection">

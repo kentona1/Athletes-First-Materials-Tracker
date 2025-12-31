@@ -332,6 +332,7 @@ CREATE TABLE IF NOT EXISTS material_events (
     event_date DATE NOT NULL,
     delivery_method TEXT NOT NULL, -- Meeting, Mail, Email
     event_number INTEGER NOT NULL, -- Auto-incremented per delivery method (Meeting -x1, -x2, etc.)
+    copies INTEGER DEFAULT 1, -- Number of copies printed/shipped (for Mail/Meeting)
     notes TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE
@@ -355,6 +356,7 @@ SELECT
     me.delivery_method,
     me.event_number,
     me.delivery_method || ' -x' || me.event_number as event_label,
+    me.copies,
     COUNT(pm.id) as material_count,
     GROUP_CONCAT(mt.name, ', ') as materials,
     me.notes,

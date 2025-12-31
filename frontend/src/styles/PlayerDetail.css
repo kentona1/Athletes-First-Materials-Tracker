@@ -493,6 +493,13 @@
   color: #0066cc;
 }
 
+.event-copies {
+  font-size: 0.875rem;
+  color: #666;
+  font-style: italic;
+  margin-left: 0.5rem;
+}
+
 .event-materials {
   padding: 1rem;
 }
