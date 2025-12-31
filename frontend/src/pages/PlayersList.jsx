@@ -12,11 +12,13 @@ function PlayersList() {
     position: '',
     school: '',
     conference: '',
-    agent: ''
+    agent: '',
+    year: ''
   });
 
   const [positions, setPositions] = useState([]);
   const [conferences, setConferences] = useState([]);
+  const [years, setYears] = useState([]);
 
   useEffect(() => {
     fetchPlayers();
@@ -43,10 +45,20 @@ function PlayersList() {
   const fetchFilterOptions = async () => {
     try {
       const analyticsRes = await axios.get('/api/players/analytics');
-      
+      const playersRes = await axios.get('/api/players');
+
       const analytics = analyticsRes.data.data;
       setPositions(analytics.byPosition?.map(p => p.position) || []);
       setConferences(analytics.byConference?.map(c => c.conference) || []);
+
+      // Extract unique years from players and sort descending
+      const allPlayers = playersRes.data.data || [];
+      const uniqueYears = [...new Set(
+        allPlayers
+          .map(p => p.eligibility_year)
+          .filter(year => year != null)
+      )].sort((a, b) => b - a);
+      setYears(uniqueYears);
     } catch (error) {
       console.error('Error fetching filter options:', error);
     }
@@ -63,7 +75,8 @@ function PlayersList() {
       position: '',
       school: '',
       conference: '',
-      agent: ''
+      agent: '',
+      year: ''
     });
   };
 
@@ -122,6 +135,17 @@ function PlayersList() {
           <option value="">All Conferences</option>
           {conferences.filter(Boolean).map(conf => (
             <option key={conf} value={conf}>{conf}</option>
+          ))}
+        </select>
+
+        <select
+          value={filters.year}
+          onChange={(e) => handleFilterChange('year', e.target.value)}
+          className="filter-select"
+        >
+          <option value="">All Years</option>
+          {years.map(year => (
+            <option key={year} value={year}>{year}</option>
           ))}
         </select>
 
