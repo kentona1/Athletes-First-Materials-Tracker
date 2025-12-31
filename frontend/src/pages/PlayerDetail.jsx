@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from '../api/axios';
 import { formatHeight } from '../utils/formatters';
+import MaterialEventForm from '../components/MaterialEventForm';
 import '../styles/PlayerDetail.css';
 
 function PlayerDetail() {
@@ -10,6 +11,7 @@ function PlayerDetail() {
   const [player, setPlayer] = useState(null);
   const [schoolData, setSchoolData] = useState(null);
   const [progressionLogos, setProgressionLogos] = useState({}); // Map of school name to logo URL
+  const [materialEvents, setMaterialEvents] = useState([]); // Event-based materials
   const [loading, setLoading] = useState(true);
   const [showMaterialForm, setShowMaterialForm] = useState(false);
   const [materialTypes, setMaterialTypes] = useState([]);
@@ -29,6 +31,7 @@ function PlayerDetail() {
     fetchPlayerDetails();
     fetchMaterialTypes();
     fetchAgents();
+    fetchMaterialEvents();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
@@ -114,6 +117,23 @@ function PlayerDetail() {
     } catch (error) {
       console.error('Error fetching agents:', error);
     }
+  };
+
+  const fetchMaterialEvents = async () => {
+    try {
+      const response = await axios.get(`/api/materials/events/${id}`);
+      setMaterialEvents(response.data.data || []);
+      console.log('📦 Loaded', response.data.data?.length || 0, 'material events');
+    } catch (error) {
+      console.error('Error fetching material events:', error);
+      setMaterialEvents([]);
+    }
+  };
+
+  const handleEventCreated = (eventData) => {
+    console.log('✅ Event created:', eventData);
+    setShowMaterialForm(false);
+    fetchMaterialEvents(); // Reload events
   };
 
   const handleAddMaterial = async (e) => {
@@ -383,16 +403,24 @@ function PlayerDetail() {
 
       <div className="materials-section">
         <div className="section-header">
-          <h2>Materials ({player.materials?.length || 0})</h2>
-          <button 
+          <h2>Materials ({materialEvents.length} events)</h2>
+          <button
             onClick={() => setShowMaterialForm(!showMaterialForm)}
             className="btn btn-primary"
           >
-            {showMaterialForm ? 'Cancel' : '+ Log Material'}
+            {showMaterialForm ? 'Cancel' : '+ Log Materials'}
           </button>
         </div>
 
         {showMaterialForm && (
+          <MaterialEventForm
+            playerId={id}
+            onSuccess={handleEventCreated}
+            onCancel={() => setShowMaterialForm(false)}
+          />
+        )}
+
+        {false && (
           <form onSubmit={handleAddMaterial} className="material-form">
             <div className="form-row">
               <div className="form-group">
@@ -490,32 +518,34 @@ function PlayerDetail() {
         )}
 
         <div className="materials-timeline">
-          {player.materials && player.materials.length > 0 ? (
-            player.materials.map(material => (
-              <div key={material.id} className="material-item">
-                <div className="material-date">
-                  {new Date(material.delivery_date).toLocaleDateString()}
-                </div>
-                <div className="material-content">
-                  <h4>{material.material_type_name}</h4>
-                  {material.title && <p className="material-title">{material.title}</p>}
-                  <div className="material-meta">
-                    <span className="material-method">{material.delivery_method}</span>
-                    {material.agent_name && (
-                      <span className="material-agent">• {material.agent_name}</span>
-                    )}
+          {materialEvents && materialEvents.length > 0 ? (
+            materialEvents.map(event => (
+              <div key={event.id} className="material-event">
+                <div className="event-header">
+                  <div className="event-date">
+                    {new Date(event.event_date).toLocaleDateString('en-US', {
+                      year: 'numeric',
+                      month: '2-digit',
+                      day: '2-digit'
+                    })}
                   </div>
-                  {material.notes && <p className="material-notes">{material.notes}</p>}
-                  {material.file_path && (
-                    <a href={material.file_path} className="material-link" target="_blank" rel="noopener noreferrer">
-                      View File
-                    </a>
-                  )}
+                  <div className="event-label">{event.event_label}</div>
+                </div>
+                <div className="event-materials">
+                  <ul>
+                    {event.materials_detailed && event.materials_detailed.map(material => (
+                      <li key={material.id}>
+                        <span className="material-name">{material.material_name}</span>
+                        <span className="material-category">{material.category}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  {event.notes && <p className="event-notes">{event.notes}</p>}
                 </div>
               </div>
             ))
           ) : (
-            <p className="no-materials">No materials logged yet.</p>
+            <p className="no-materials">No materials logged yet. Click "+ Log Materials" to get started!</p>
           )}
         </div>
       </div>

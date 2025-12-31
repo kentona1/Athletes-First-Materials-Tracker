@@ -462,3 +462,87 @@
   color: #6c757d;
   flex-shrink: 0;
 }
+
+/* Material Events Styling */
+.material-event {
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  overflow: hidden;
+}
+
+.event-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  background: #f8f9fa;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.event-date {
+  font-size: 0.875rem;
+  color: #666;
+  font-weight: 500;
+}
+
+.event-label {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #0066cc;
+}
+
+.event-materials {
+  padding: 1rem;
+}
+
+.event-materials ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.event-materials li {
+  padding: 0.5rem 0;
+  border-bottom: 1px solid #f0f0f0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.event-materials li:last-child {
+  border-bottom: none;
+}
+
+.event-materials li::before {
+  content: "•";
+  color: #0066cc;
+  font-weight: bold;
+  display: inline-block;
+  width: 1em;
+  margin-right: 0.5rem;
+}
+
+.event-materials .material-name {
+  flex: 1;
+  font-size: 0.95rem;
+  color: #333;
+}
+
+.event-materials .material-category {
+  font-size: 0.75rem;
+  color: #666;
+  background: #e9ecef;
+  padding: 0.2rem 0.5rem;
+  border-radius: 3px;
+}
+
+.event-notes {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid #f0f0f0;
+  font-size: 0.875rem;
+  color: #666;
+  font-style: italic;
+}
