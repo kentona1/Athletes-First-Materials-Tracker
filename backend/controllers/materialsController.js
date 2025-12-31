@@ -273,6 +273,179 @@ class MaterialsController {
       res.status(500).json({ success: false, error: error.message });
     }
   }
+
+  // ========================================
+  // EVENT-BASED LOGGING (New Workflow)
+  // ========================================
+
+  // Create material event with multiple materials
+  async createMaterialEvent(req, res) {
+    try {
+      const { playerId, eventDate, deliveryMethod, materialIds, notes } = req.body;
+
+      // Validate required fields
+      if (!playerId || !eventDate || !deliveryMethod || !materialIds || materialIds.length === 0) {
+        return res.status(400).json({
+          success: false,
+          error: 'Missing required fields: playerId, eventDate, deliveryMethod, materialIds'
+        });
+      }
+
+      // Get current event count for this delivery method
+      const countResult = await db.get(`
+        SELECT COUNT(*) as count
+        FROM material_events
+        WHERE player_id = ? AND delivery_method = ?
+      `, [playerId, deliveryMethod]);
+
+      const eventNumber = (countResult?.count || 0) + 1;
+
+      // Create the event
+      const eventResult = await db.run(`
+        INSERT INTO material_events (player_id, event_date, delivery_method, event_number, notes)
+        VALUES (?, ?, ?, ?, ?)
+      `, [playerId, eventDate, deliveryMethod, eventNumber, notes || null]);
+
+      const eventId = eventResult.id;
+
+      // Link materials to the event
+      const materialResults = [];
+      for (const materialTypeId of materialIds) {
+        const materialResult = await db.run(`
+          INSERT INTO player_materials (
+            player_id, material_type_id, event_id, delivery_date, delivery_method
+          ) VALUES (?, ?, ?, ?, ?)
+        `, [playerId, materialTypeId, eventId, eventDate, deliveryMethod]);
+
+        materialResults.push({ id: materialResult.id, materialTypeId });
+      }
+
+      console.log(`✅ Created event: ${deliveryMethod} -x${eventNumber} with ${materialResults.length} materials`);
+
+      res.json({
+        success: true,
+        data: {
+          eventId,
+          eventNumber,
+          eventLabel: `${deliveryMethod} -x${eventNumber}`,
+          materialsCount: materialResults.length
+        },
+        message: `Event created: ${deliveryMethod} -x${eventNumber}`
+      });
+    } catch (error) {
+      console.error('Error creating material event:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  }
+
+  // Get all events for a player (with materials grouped)
+  async getPlayerEvents(req, res) {
+    try {
+      const { playerId } = req.params;
+
+      // Get all events
+      const events = await db.query(`
+        SELECT * FROM material_events_view
+        WHERE player_id = ?
+        ORDER BY event_date DESC
+      `, [playerId]);
+
+      // For each event, get the detailed materials list
+      for (const event of events) {
+        const materials = await db.query(`
+          SELECT
+            pm.id,
+            pm.material_type_id,
+            mt.name as material_name,
+            mt.category
+          FROM player_materials pm
+          JOIN material_types mt ON pm.material_type_id = mt.id
+          WHERE pm.event_id = ?
+        `, [event.id]);
+
+        event.materials_detailed = materials;
+      }
+
+      res.json({ success: true, data: events });
+    } catch (error) {
+      console.error('Error fetching player events:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  }
+
+  // Update material event
+  async updateMaterialEvent(req, res) {
+    try {
+      const { eventId } = req.params;
+      const { eventDate, deliveryMethod, materialIds, notes } = req.body;
+
+      // Update event details
+      const updateFields = [];
+      const updateValues = [];
+
+      if (eventDate) {
+        updateFields.push('event_date = ?');
+        updateValues.push(eventDate);
+      }
+      if (deliveryMethod) {
+        updateFields.push('delivery_method = ?');
+        updateValues.push(deliveryMethod);
+      }
+      if (notes !== undefined) {
+        updateFields.push('notes = ?');
+        updateValues.push(notes);
+      }
+
+      if (updateFields.length > 0) {
+        updateValues.push(eventId);
+        await db.run(
+          `UPDATE material_events SET ${updateFields.join(', ')} WHERE id = ?`,
+          updateValues
+        );
+      }
+
+      // Update materials if provided
+      if (materialIds && materialIds.length > 0) {
+        // Delete existing materials for this event
+        await db.run('DELETE FROM player_materials WHERE event_id = ?', [eventId]);
+
+        // Get event details for player_id and delivery info
+        const event = await db.get('SELECT * FROM material_events WHERE id = ?', [eventId]);
+
+        // Insert new materials
+        for (const materialTypeId of materialIds) {
+          await db.run(`
+            INSERT INTO player_materials (
+              player_id, material_type_id, event_id, delivery_date, delivery_method
+            ) VALUES (?, ?, ?, ?, ?)
+          `, [event.player_id, materialTypeId, eventId, event.event_date, event.delivery_method]);
+        }
+      }
+
+      res.json({ success: true, message: 'Event updated successfully' });
+    } catch (error) {
+      console.error('Error updating material event:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  }
+
+  // Delete material event and all associated materials
+  async deleteMaterialEvent(req, res) {
+    try {
+      const { eventId } = req.params;
+
+      // Delete materials first (will cascade if FK is set, but being explicit)
+      await db.run('DELETE FROM player_materials WHERE event_id = ?', [eventId]);
+
+      // Delete event
+      await db.run('DELETE FROM material_events WHERE id = ?', [eventId]);
+
+      res.json({ success: true, message: 'Event and materials deleted successfully' });
+    } catch (error) {
+      console.error('Error deleting material event:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  }
 }
 
 module.exports = new MaterialsController();
