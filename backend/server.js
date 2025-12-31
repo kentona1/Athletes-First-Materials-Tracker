@@ -167,8 +167,24 @@ async function startServer() {
 async function runMigrations() {
   try {
     console.log('🔄 Running database migrations...');
-    const migrate = require('./database/migrations/add_recruiting_and_transfers');
-    await migrate();
+
+    // Run recruiting and transfers migration
+    try {
+      const migrate = require('./database/migrations/add_recruiting_and_transfers');
+      await migrate();
+    } catch (error) {
+      console.error('⚠️  Recruiting migration error:', error.message);
+    }
+
+    // Run material events migration
+    try {
+      const { runMigrations: runMaterialEventsMigrations } = require('./database/runMigrations');
+      await runMaterialEventsMigrations();
+    } catch (error) {
+      console.error('⚠️  Material events migration error:', error.message);
+    }
+
+    console.log('✅ All migrations completed');
   } catch (error) {
     console.error('⚠️  Migration error:', error.message);
     // Don't fail startup if migration fails

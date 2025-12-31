@@ -217,25 +217,47 @@ INSERT OR IGNORE INTO agents (name) VALUES
     ('Wallace'),
     ('Williams');
 
--- Insert common material types
-INSERT OR IGNORE INTO material_types (name, category) VALUES 
+-- Insert common material types (from user's spreadsheet)
+INSERT OR IGNORE INTO material_types (name, category) VALUES
     ('Intro Packet', 'Package'),
+    ('Calendar', 'Planning'),
+    ('Marketing Intro Packet', 'Marketing'),
+    ('Marketing Packet', 'Marketing'),
+    ('Power One-Sheet', 'Marketing'),
+    ('Marketing One-Sheet', 'Marketing'),
+    ('Past, Present, Future', 'Marketing'),
+    ('Contracts One-Sheet', 'Business'),
+    ('TV Welcome Graphic', 'Design'),
+    ('Welcome TV Graphic', 'Design'),
+    ('A1 v WME Comparison One-Sheet', 'Business'),
     ('Video Book', 'Package'),
     ('Training Packet', 'Training'),
-    ('Calendar', 'Planning'),
-    ('Marketing Packet', 'Marketing'),
+    ('Mulugheta + Smith Contract Packet', 'Business'),
+    ('IDL Power', 'Training'),
+    ('Top 100 Draft Picks', 'Analytics'),
+    ('Mulugheta Top 5 One-Sheets', 'Marketing'),
+    ('Panos Power Packet', 'Marketing'),
+    ('The Bear Path to the Draft Packet', 'Analytics'),
+    ('Wisconsin Ties One-Sheet', 'Marketing'),
+    ('OL Marketing One-Sheet', 'Marketing'),
+    ('OL Contract Packet', 'Business'),
+    ('OL Power One-Sheet', 'Marketing'),
+    ('CBU Brochure', 'Marketing'),
+    ('LB Marketing One-Sheet', 'Marketing'),
+    ('LB Power One-Sheet', 'Marketing'),
+    ('LB Contracts One-Sheet', 'Business'),
+    ('Presentation', 'Presentation'),
+    ('Contract Packet', 'Business'),
+    ('DB Contract Packet', 'Business'),
+    ('Dandy Contract Packet', 'Business'),
+    ('Dandy Ayres Release One-Sheet', 'Marketing'),
     ('Stay or Go Packet', 'Decision'),
     ('Graphics', 'Design'),
     ('Logo Design', 'Design'),
     ('Branding', 'Design'),
-    ('One-Sheet', 'Marketing'),
-    ('Contract Analysis', 'Business'),
-    ('Position Specific Materials', 'Training'),
-    ('PowerPoint Presentation', 'Presentation'),
     ('Thank You Notes', 'Communication'),
     ('Birthday Card', 'Personal'),
-    ('Lockscreen', 'Design'),
-    ('Feedback Document', 'Analysis');
+    ('Lockscreen', 'Design');
 
 -- Insert common recruiting cycles
 INSERT OR IGNORE INTO recruiting_cycles (year, start_date, end_date) VALUES
@@ -301,3 +323,45 @@ LEFT JOIN player_outcomes po ON pa.player_id = po.player_id
 LEFT JOIN player_materials pm ON pa.player_id = pm.player_id AND pa.agent_id = pm.agent_id
 GROUP BY a.id
 ORDER BY signed DESC;
+
+-- Material Events table for batch logging
+-- Groups multiple materials under a single delivery event
+CREATE TABLE IF NOT EXISTS material_events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    player_id INTEGER NOT NULL,
+    event_date DATE NOT NULL,
+    delivery_method TEXT NOT NULL, -- Meeting, Mail, Email
+    event_number INTEGER NOT NULL, -- Auto-incremented per delivery method (Meeting -x1, -x2, etc.)
+    notes TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE
+);
+
+-- Add event_id column to player_materials for event-based grouping
+-- This column links materials to their delivery event
+-- NULL for legacy single-material entries, populated for new event-based entries
+
+-- Create indexes for material events
+CREATE INDEX IF NOT EXISTS idx_material_events_player ON material_events(player_id);
+CREATE INDEX IF NOT EXISTS idx_material_events_date ON material_events(event_date);
+
+-- View: Material events with counts and material list
+CREATE VIEW IF NOT EXISTS material_events_view AS
+SELECT
+    me.id,
+    me.player_id,
+    p.name as player_name,
+    me.event_date,
+    me.delivery_method,
+    me.event_number,
+    me.delivery_method || ' -x' || me.event_number as event_label,
+    COUNT(pm.id) as material_count,
+    GROUP_CONCAT(mt.name, ', ') as materials,
+    me.notes,
+    me.created_at
+FROM material_events me
+LEFT JOIN players p ON me.player_id = p.id
+LEFT JOIN player_materials pm ON me.id = pm.event_id
+LEFT JOIN material_types mt ON pm.material_type_id = mt.id
+GROUP BY me.id
+ORDER BY me.event_date DESC;
