@@ -530,9 +530,6 @@ function PlayerDetail() {
                     })}
                   </div>
                   <div className="event-label">{event.event_label}</div>
-                  {event.delivery_method !== 'Email' && event.copies > 1 && (
-                    <div className="event-copies">({event.copies} copies)</div>
-                  )}
                 </div>
                 <div className="event-materials">
                   <ul>

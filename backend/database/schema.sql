@@ -355,7 +355,10 @@ SELECT
     me.event_date,
     me.delivery_method,
     me.event_number,
-    me.delivery_method || ' -x' || me.event_number as event_label,
+    CASE
+        WHEN me.copies > 1 THEN me.delivery_method || ' -x' || me.copies
+        ELSE me.delivery_method
+    END as event_label,
     me.copies,
     COUNT(pm.id) as material_count,
     GROUP_CONCAT(mt.name, ', ') as materials,

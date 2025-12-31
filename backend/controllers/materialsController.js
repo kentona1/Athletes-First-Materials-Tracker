@@ -323,17 +323,20 @@ class MaterialsController {
         materialResults.push({ id: materialResult.id, materialTypeId });
       }
 
-      console.log(`✅ Created event: ${deliveryMethod} -x${eventNumber} with ${materialResults.length} materials`);
+      // Create event label based on copies (not event number)
+      const eventLabel = copiesCount > 1 ? `${deliveryMethod} -x${copiesCount}` : deliveryMethod;
+
+      console.log(`✅ Created event: ${eventLabel} with ${materialResults.length} materials`);
 
       res.json({
         success: true,
         data: {
           eventId,
           eventNumber,
-          eventLabel: `${deliveryMethod} -x${eventNumber}`,
+          eventLabel,
           materialsCount: materialResults.length
         },
-        message: `Event created: ${deliveryMethod} -x${eventNumber}`
+        message: `Event created: ${eventLabel}`
       });
     } catch (error) {
       console.error('Error creating material event:', error);
