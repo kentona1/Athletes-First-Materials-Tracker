@@ -800,37 +800,58 @@ class PlayersController {
 
       console.log('📊 Found', matchingTransfers.length, 'exact name matches');
 
-      // If we have a current school, VERIFY this is the right player (not a different person with same name)
+      // If we have a current school, BUILD the transfer chain leading to that school
       if (school && matchingTransfers.length > 0) {
-        console.log('🏫 Verifying transfers match player at:', school);
+        console.log('🏫 Building transfer chain for player at:', school);
 
-        // Check if current school appears ANYWHERE in the transfer chain (origin OR destination)
-        const schoolAppearsInChain = matchingTransfers.some(t => {
-          const originSchool = t.origin?.toLowerCase() || '';
-          const destSchool = t.destination?.toLowerCase() || '';
-          const currentSchool = school.toLowerCase();
+        // Build transfer chain backwards from current school
+        const chain = [];
+        let searchSchool = school;
+        const usedTransfers = new Set();
 
-          const matchesOrigin = originSchool.includes(currentSchool) || currentSchool.includes(originSchool);
-          const matchesDest = destSchool.includes(currentSchool) || currentSchool.includes(destSchool);
+        // Keep searching backwards until no more transfers found
+        let foundTransfer = true;
+        while (foundTransfer) {
+          foundTransfer = false;
 
-          return matchesOrigin || matchesDest;
-        });
+          // Find transfer where destination matches what we're searching for
+          for (let i = 0; i < matchingTransfers.length; i++) {
+            if (usedTransfers.has(i)) continue; // Skip already used transfers
 
-        if (!schoolAppearsInChain) {
-          console.warn('⚠️ Current school does not appear anywhere in transfer chain - may be different player with same name.');
+            const transfer = matchingTransfers[i];
+            const destSchool = transfer.destination?.toLowerCase() || '';
+            const currentSearchSchool = searchSchool.toLowerCase();
+
+            // Check if this transfer's destination matches our search target
+            const matches = destSchool.includes(currentSearchSchool) || currentSearchSchool.includes(destSchool);
+
+            if (matches) {
+              console.log('  ✅ Found in chain:', `${transfer.origin} → ${transfer.destination} (${transfer.season})`);
+              chain.unshift(transfer); // Add to beginning of chain
+              usedTransfers.add(i);
+              searchSchool = transfer.origin; // Now search for transfers TO this origin
+              foundTransfer = true;
+              break;
+            }
+          }
+        }
+
+        if (chain.length === 0) {
+          console.warn('⚠️ Could not build transfer chain to current school - may be different player with same name.');
           console.warn('   Current school:', school);
-          console.warn('   Transfer chain:', matchingTransfers.map(t => `${t.origin} → ${t.destination}`).join(', '));
+          console.warn('   Available transfers:', matchingTransfers.map(t => `${t.origin} → ${t.destination}`).join(', '));
 
           // Return empty - don't show potentially wrong data
           return res.json({
             success: true,
             data: [],
-            warning: 'Found transfers but current school not in chain - may be different player'
+            warning: 'Could not build transfer chain to current school - may be different player'
           });
         }
 
-        console.log('✅ Verified: Current school appears in transfer chain');
-        console.log('✅ Returning ALL', matchingTransfers.length, 'transfers for this player');
+        // Use only the transfers in the chain
+        matchingTransfers = chain;
+        console.log('✅ Built transfer chain with', matchingTransfers.length, 'transfers');
       }
 
       console.log('✅ Found', matchingTransfers.length, 'verified transfer records');

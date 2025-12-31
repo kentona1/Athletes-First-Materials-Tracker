@@ -324,9 +324,9 @@ function PlayerDetail() {
 
               {player.original_commitment && player.original_commitment !== player.school && (
                 <>
-                  <div className="progression-arrow">→</div>
+                  {player.high_school && <div className="progression-arrow">→</div>}
                   <div className="progression-step">
-                    <div className="step-label">Original</div>
+                    <div className="step-label">{player.recruiting_class_year || 'Original'}</div>
                     {progressionLogos[player.original_commitment] && (
                       <img
                         src={progressionLogos[player.original_commitment]}
