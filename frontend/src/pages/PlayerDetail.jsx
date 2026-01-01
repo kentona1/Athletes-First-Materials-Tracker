@@ -55,6 +55,10 @@ function PlayerDetail() {
     }
     if (playerData.transfers && playerData.transfers.length > 0) {
       playerData.transfers.forEach(transfer => {
+        // Add both from_school and to_school
+        if (transfer.from_school && !schoolsToFetch.includes(transfer.from_school)) {
+          schoolsToFetch.push(transfer.from_school);
+        }
         if (transfer.to_school && !schoolsToFetch.includes(transfer.to_school)) {
           schoolsToFetch.push(transfer.to_school);
         }
