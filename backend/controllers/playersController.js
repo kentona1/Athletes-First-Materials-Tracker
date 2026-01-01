@@ -157,6 +157,23 @@ class PlayersController {
     try {
       const playerData = req.body;
 
+      // Check if player with this ESPN ID already exists
+      if (playerData.espn_id) {
+        const existingPlayer = await db.get(
+          'SELECT id, name, school FROM players WHERE espn_id = ?',
+          [playerData.espn_id]
+        );
+
+        if (existingPlayer) {
+          return res.status(409).json({
+            success: false,
+            error: 'Player already exists',
+            message: `${existingPlayer.name} (${existingPlayer.school}) is already in the database`,
+            existingPlayerId: existingPlayer.id
+          });
+        }
+      }
+
       const result = await db.run(`
         INSERT INTO players (
           name, position, school, conference, hometown, state,
@@ -196,6 +213,16 @@ class PlayersController {
       });
     } catch (error) {
       console.error('Error creating player:', error);
+
+      // Handle SQLITE_CONSTRAINT errors specifically
+      if (error.code === 'SQLITE_CONSTRAINT') {
+        return res.status(409).json({
+          success: false,
+          error: 'Duplicate player',
+          message: 'A player with this information already exists in the database'
+        });
+      }
+
       res.status(500).json({ success: false, error: error.message });
     }
   }

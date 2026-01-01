@@ -450,7 +450,25 @@ function AddPlayer() {
       navigate(`/players/${playerId}`);
     } catch (error) {
       console.error('Error adding player:', error);
-      alert('Error adding player');
+
+      // Handle duplicate player error
+      if (error.response?.status === 409) {
+        const errorData = error.response.data;
+        const existingPlayerId = errorData.existingPlayerId;
+
+        if (existingPlayerId) {
+          const viewExisting = window.confirm(
+            `${errorData.message}\n\nWould you like to view the existing player?`
+          );
+          if (viewExisting) {
+            navigate(`/players/${existingPlayerId}`);
+          }
+        } else {
+          alert(errorData.message || 'This player already exists in the database');
+        }
+      } else {
+        alert('Error adding player: ' + (error.response?.data?.message || error.message));
+      }
     }
   };
 
