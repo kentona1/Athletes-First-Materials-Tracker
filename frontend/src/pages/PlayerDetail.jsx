@@ -513,67 +513,85 @@ function PlayerDetail() {
           <div className="school-progression">
             <h3>School Progression</h3>
             <div className="progression-timeline">
-              {player.high_school && (
-                <div className="progression-step">
-                  <div className="step-label">High School</div>
-                  <div className="step-school">{player.high_school}</div>
-                </div>
-              )}
+              {(() => {
+                const steps = [];
 
-              {player.original_commitment && player.original_commitment !== player.school && (
-                <>
-                  {player.high_school && <div className="progression-arrow">→</div>}
-                  <div className="progression-step">
-                    <div className="step-label">{player.recruiting_class_year || 'Original'}</div>
-                    {progressionLogos[player.original_commitment] && (
-                      <img
-                        src={progressionLogos[player.original_commitment]}
-                        alt={player.original_commitment}
-                        className="progression-logo"
-                      />
-                    )}
-                    <div className="step-school">{player.original_commitment}</div>
-                  </div>
-                </>
-              )}
+                // 1. Add high school
+                if (player.high_school) {
+                  steps.push({
+                    type: 'high_school',
+                    label: 'High School',
+                    school: player.high_school,
+                    year: null
+                  });
+                }
 
-              {player.transfers && player.transfers.length > 0 && (
-                [...player.transfers]
-                  .sort((a, b) => a.transfer_year - b.transfer_year)
-                  .map((transfer, idx) => (
-                    <React.Fragment key={idx}>
-                      <div className="progression-arrow">→</div>
-                      <div className="progression-step">
-                        <div className="step-label">{transfer.transfer_year}</div>
-                        {progressionLogos[transfer.to_school] && (
-                          <img
-                            src={progressionLogos[transfer.to_school]}
-                            alt={transfer.to_school}
-                            className="progression-logo"
-                          />
-                        )}
-                        <div className="step-school">{transfer.to_school}</div>
-                      </div>
-                    </React.Fragment>
-                  ))
-              )}
+                // 2. Build college progression from transfers
+                if (player.transfers && player.transfers.length > 0) {
+                  const sortedTransfers = [...player.transfers].sort((a, b) => a.transfer_year - b.transfer_year);
 
-              {(!player.transfers || player.transfers.length === 0) && player.school !== player.original_commitment && (
-                <>
-                  <div className="progression-arrow">→</div>
-                  <div className="progression-step current">
-                    <div className="step-label">Current</div>
-                    {progressionLogos[player.school] && (
-                      <img
-                        src={progressionLogos[player.school]}
-                        alt={player.school}
-                        className="progression-logo"
-                      />
-                    )}
-                    <div className="step-school">{player.school}</div>
-                  </div>
-                </>
-              )}
+                  // Add the first school (from_school of first transfer)
+                  const firstTransfer = sortedTransfers[0];
+                  steps.push({
+                    type: 'college',
+                    label: player.recruiting_class_year || 'Original',
+                    school: firstTransfer.from_school,
+                    year: player.recruiting_class_year
+                  });
+
+                  // Add all subsequent schools (to_school of each transfer)
+                  sortedTransfers.forEach(transfer => {
+                    steps.push({
+                      type: 'college',
+                      label: transfer.transfer_year,
+                      school: transfer.to_school,
+                      year: transfer.transfer_year
+                    });
+                  });
+                } else if (player.original_commitment || player.school) {
+                  // No transfers - show original commitment or current school
+                  if (player.original_commitment && player.original_commitment !== player.school) {
+                    // Had different original commitment
+                    steps.push({
+                      type: 'college',
+                      label: player.recruiting_class_year || 'Original',
+                      school: player.original_commitment,
+                      year: player.recruiting_class_year
+                    });
+                    steps.push({
+                      type: 'college',
+                      label: 'Current',
+                      school: player.school,
+                      year: null
+                    });
+                  } else {
+                    // Just current school
+                    steps.push({
+                      type: 'college',
+                      label: player.recruiting_class_year || 'Current',
+                      school: player.school,
+                      year: player.recruiting_class_year
+                    });
+                  }
+                }
+
+                return steps.map((step, idx) => (
+                  <React.Fragment key={idx}>
+                    {idx > 0 && <div className="progression-arrow">→</div>}
+                    <div className={`progression-step ${idx === steps.length - 1 ? 'current' : ''}`}>
+                      <div className="step-label">{step.label}</div>
+                      {step.type === 'college' && progressionLogos[step.school] && (
+                        <img
+                          src={progressionLogos[step.school]}
+                          alt={step.school}
+                          className="progression-logo"
+                        />
+                      )}
+                      <div className="step-school">{step.school}</div>
+                    </div>
+                  </React.Fragment>
+                ));
+              })()}
             </div>
           </div>
         </div>
