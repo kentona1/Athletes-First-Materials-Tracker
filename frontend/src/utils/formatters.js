@@ -2,6 +2,11 @@
 export const formatHeight = (inches) => {
   if (!inches) return '';
 
+  // If already in feet'inches format, return as-is
+  if (typeof inches === 'string' && inches.includes("'")) {
+    return inches;
+  }
+
   const totalInches = parseInt(inches);
   if (isNaN(totalInches)) return inches;
 

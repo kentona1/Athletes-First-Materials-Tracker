@@ -634,3 +634,345 @@
 .btn-small.btn-secondary:hover {
   background-color: #5a6268;
 }
+
+/* Page Header */
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.header-actions {
+  display: flex;
+  gap: 0.75rem;
+}
+
+/* Player Type Badge */
+.player-name-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.player-type-badge {
+  padding: 0.35rem 0.85rem;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.player-type-badge.high_school {
+  background-color: #fff3cd;
+  color: #856404;
+  border: 1px solid #ffc107;
+}
+
+.player-type-badge.veteran {
+  background-color: #e8f5e9;
+  color: #2e7d32;
+  border: 1px solid #4caf50;
+}
+
+/* Success Button */
+.btn-success {
+  background-color: #28a745;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background-color 0.2s;
+}
+
+.btn-success:hover {
+  background-color: #218838;
+}
+
+/* Modal Styles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background: white;
+  padding: 2rem;
+  border-radius: 12px;
+  max-width: 500px;
+  width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+}
+
+.modal-content h2 {
+  margin-bottom: 0.75rem;
+  color: #333;
+}
+
+.modal-description {
+  color: #666;
+  margin-bottom: 1.5rem;
+  line-height: 1.5;
+}
+
+.upgrade-modal .form-group {
+  margin-bottom: 1.25rem;
+}
+
+.upgrade-modal .form-group label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  color: #333;
+}
+
+.upgrade-modal .form-group input,
+.upgrade-modal .form-group select {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 1rem;
+  box-sizing: border-box;
+}
+
+.upgrade-modal .form-group input:focus,
+.upgrade-modal .form-group select:focus {
+  outline: none;
+  border-color: #28a745;
+  box-shadow: 0 0 0 3px rgba(40, 167, 69, 0.1);
+}
+
+.upgrade-modal .disabled-input {
+  background-color: #f0f0f0;
+  color: #666;
+  cursor: not-allowed;
+}
+
+.upgrade-modal .form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.upgrade-modal .form-actions {
+  display: flex;
+  gap: 1rem;
+  margin-top: 1.5rem;
+  justify-content: flex-end;
+}
+
+/* Upgrade Modal ESPN Search */
+.upgrade-search {
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  background: #f0f7ff;
+  border-radius: 8px;
+  border: 1px solid #b3d4fc;
+}
+
+.upgrade-search h4 {
+  margin: 0 0 1rem 0;
+  font-size: 1rem;
+  color: #1565c0;
+}
+
+.upgrade-search .search-form {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.upgrade-search .search-input {
+  flex: 1;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 0.9rem;
+}
+
+.upgrade-search .search-results {
+  margin-top: 1rem;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.upgrade-search .search-results h5 {
+  margin: 0 0 0.5rem 0;
+  font-size: 0.9rem;
+  color: #555;
+}
+
+.upgrade-search .results-grid.compact {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.upgrade-search .search-result-card {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.upgrade-search .search-result-card:hover {
+  border-color: #1976d2;
+  background: #f5faff;
+}
+
+.upgrade-search .player-image {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.upgrade-search .player-info {
+  flex: 1;
+}
+
+.upgrade-search .player-name {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.upgrade-search .player-details {
+  font-size: 0.8rem;
+  color: #666;
+}
+
+.upgrade-modal .selected-player-preview {
+  margin-bottom: 1rem;
+  padding: 0.75rem 1rem;
+  background: #e8f5e9;
+  border: 1px solid #4caf50;
+  border-radius: 8px;
+}
+
+.upgrade-modal .preview-content {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.upgrade-modal .preview-image {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.upgrade-modal .preview-info {
+  flex: 1;
+}
+
+.upgrade-modal .preview-badge {
+  display: inline-block;
+  padding: 0.15rem 0.5rem;
+  background: #4caf50;
+  color: white;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+
+.upgrade-modal .preview-name {
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.upgrade-modal .preview-details {
+  font-size: 0.85rem;
+  color: #555;
+}
+
+/* Veteran Upgrade Modal */
+.veteran-modal .modal-description {
+  color: #1565c0;
+}
+
+.veteran-search {
+  background: #e3f2fd;
+  border-color: #1976d2;
+}
+
+.veteran-search h4 {
+  color: #1565c0;
+}
+
+.veteran-upgrade {
+  background: #1976d2;
+  border-color: #1565c0;
+}
+
+.veteran-upgrade:hover {
+  background: #1565c0;
+}
+
+.veteran-modal .nfl-preview {
+  background: #e3f2fd;
+  border-color: #1976d2;
+}
+
+.veteran-modal .nfl-badge {
+  background: #1976d2;
+}
+
+/* Connect to ESPN Modal */
+.connect-modal .modal-description {
+  color: #495057;
+}
+
+.connect-modal .modal-description strong {
+  color: #28a745;
+}
+
+.connect-search {
+  background: #f0f7ff;
+  border-color: #17a2b8;
+}
+
+.connect-search h4 {
+  color: #117a8b;
+}
+
+.connect-preview {
+  background: #e0f7fa;
+  border-color: #17a2b8;
+}
+
+.connect-preview .preview-badge {
+  background: #17a2b8;
+}
+
+.connect-data-preview {
+  background: #f8f9fa;
+  padding: 1rem;
+  border-radius: 8px;
+  margin: 1rem 0;
+  border: 1px solid #e0e0e0;
+}
+
+.connect-data-preview h4 {
+  margin: 0 0 1rem 0;
+  color: #333;
+  font-size: 1rem;
+}

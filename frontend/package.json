@@ -4,12 +4,14 @@
   "private": true,
   "description": "Frontend for Athletes First Recruiting Materials Tracker",
   "dependencies": {
+    "axios": "^1.6.0",
+    "d3-scale": "^4.0.2",
+    "date-fns": "^2.30.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-router-dom": "^6.20.0",
-    "axios": "^1.6.0",
-    "recharts": "^2.10.0",
-    "date-fns": "^2.30.0"
+    "react-simple-maps": "^3.0.0",
+    "recharts": "^2.10.0"
   },
   "scripts": {
     "start": "react-scripts start",

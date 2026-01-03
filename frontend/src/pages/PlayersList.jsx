@@ -88,9 +88,14 @@ function PlayersList() {
     <div className="players-list">
       <div className="page-header">
         <h2>Players</h2>
-        <Link to="/players/new" className="btn btn-primary">
-          + Add New Player
-        </Link>
+        <div className="header-actions">
+          <Link to="/import" className="btn btn-secondary">
+            Import CSV
+          </Link>
+          <Link to="/players/new" className="btn btn-primary">
+            + Add New Player
+          </Link>
+        </div>
       </div>
 
       <div className="filters-section">
@@ -110,10 +115,8 @@ function PlayersList() {
           <option value="">All Statuses</option>
           <option value="Active">Active</option>
           <option value="Signed">Signed</option>
-          <option value="Missed">Missed</option>
-          <option value="Walked Away">Walked Away</option>
+          <option value="Not Signed">Not Signed</option>
           <option value="Returned to School">Returned to School</option>
-          <option value="No Meeting">No Meeting</option>
         </select>
 
         <select
@@ -194,7 +197,9 @@ function PlayersList() {
                   </span>
                 </td>
                 <td className="text-center">
-                  {player.draft_round ? `Rd ${player.draft_round}` : '-'}
+                  {player.draft_round !== null && player.draft_round !== undefined
+                    ? (player.draft_round === 0 ? 'UDFA' : `Rd ${player.draft_round}`)
+                    : '-'}
                 </td>
                 <td>
                   <Link to={`/players/${player.id}`} className="btn-small btn-primary">

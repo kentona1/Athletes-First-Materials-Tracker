@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const bcrypt = require('bcrypt');
@@ -8,6 +9,7 @@ const materialsRoutes = require('./routes/materials');
 const agentsRoutes = require('./routes/agents');
 const authRoutes = require('./routes/auth');
 const schoolsRoutes = require('./routes/schools');
+const importRoutes = require('./routes/import');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -49,6 +51,7 @@ app.use('/api/players', playersRoutes);
 app.use('/api/materials', materialsRoutes);
 app.use('/api/agents', agentsRoutes);
 app.use('/api/schools', schoolsRoutes);
+app.use('/api/import', importRoutes);
 
 // Health check
 app.get('/health', (req, res) => {

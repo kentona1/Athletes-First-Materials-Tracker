@@ -4,17 +4,47 @@ import axios from '../api/axios';
 import SchoolAutocomplete from '../components/SchoolAutocomplete';
 import '../styles/AddPlayer.css';
 
+// Tab constants
+const TABS = {
+  HIGH_SCHOOL: 'high_school',
+  COLLEGE: 'college',
+  VETERAN: 'veteran'
+};
+
 function AddPlayer() {
   const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState(TABS.COLLEGE);
+
+  // ESPN Search state (for college players)
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [searching, setSearching] = useState(false);
   const [selectedPlayer, setSelectedPlayer] = useState(null);
   const [transferData, setTransferData] = useState([]);
+
+  // CFBD Search state (for high school players)
+  const [hsSearchQuery, setHsSearchQuery] = useState('');
+  const [hsSearchResults, setHsSearchResults] = useState([]);
+  const [hsSearching, setHsSearching] = useState(false);
+  const [selectedHSPlayer, setSelectedHSPlayer] = useState(null);
+
+  // NFL Search state (for veterans)
+  const [nflSearchQuery, setNflSearchQuery] = useState('');
+  const [nflSearchResults, setNflSearchResults] = useState([]);
+  const [nflSearching, setNflSearching] = useState(false);
+  const [selectedNFLPlayer, setSelectedNFLPlayer] = useState(null);
+
+  // Agents state
   const [agents, setAgents] = useState([]);
   const [selectedAgents, setSelectedAgents] = useState([]);
 
-  const [formData, setFormData] = useState({
+  // Generate recruiting class year options
+  // Covers HS freshmen through seniors (current year through +3)
+  const currentYear = new Date().getFullYear();
+  const recruitingClassYears = Array.from({ length: 4 }, (_, i) => currentYear + i);
+
+  // Form data for each player type
+  const [collegeFormData, setCollegeFormData] = useState({
     name: '',
     position: '',
     school: '',
@@ -24,10 +54,9 @@ function AddPlayer() {
     height: '',
     weight: '',
     class_year: '',
-    eligibility_year: new Date().getFullYear(),
+    eligibility_year: currentYear,
     espn_id: '',
     photo_url: '',
-    // Recruiting data
     high_school: '',
     recruiting_class_year: null,
     recruiting_stars: null,
@@ -36,6 +65,32 @@ function AddPlayer() {
     recruiting_state_ranking: null,
     recruiting_position_ranking: null,
     original_commitment: ''
+  });
+
+  const [highSchoolFormData, setHighSchoolFormData] = useState({
+    name: '',
+    position: '',
+    high_school: '',
+    hometown: '',
+    state: '',
+    height: '',
+    weight: '',
+    recruiting_cycle_year: '', // Manual selection required
+    recruiting_stars: null,
+    recruiting_rating: null,
+    recruiting_ranking: null,
+    photo_url: ''
+  });
+
+  const [veteranFormData, setVeteranFormData] = useState({
+    name: '',
+    position: '',
+    nfl_team: '',
+    college: '',
+    height: '',
+    weight: '',
+    years_pro: '',
+    photo_url: ''
   });
 
   // Fetch agents on mount
@@ -52,7 +107,7 @@ function AddPlayer() {
     }
   };
 
-  // Search ESPN for players
+  // Search ESPN for college players
   const handleSearch = async (e) => {
     e.preventDefault();
     if (!searchQuery.trim()) return;
@@ -73,10 +128,176 @@ function AddPlayer() {
     }
   };
 
-  // Fetch detailed player data and populate form
+  // Search CFBD for high school recruits
+  const handleHSSearch = async (e) => {
+    e.preventDefault();
+    if (!hsSearchQuery.trim()) return;
+
+    setHsSearching(true);
+    try {
+      const response = await axios.get('/api/players/search-hs-recruits', {
+        params: { name: hsSearchQuery }
+      });
+
+      console.log('HS Search results:', response.data);
+      setHsSearchResults(response.data.data || []);
+    } catch (error) {
+      console.error('Error searching CFBD:', error);
+      alert('Error searching recruiting database. Please try again.');
+    } finally {
+      setHsSearching(false);
+    }
+  };
+
+  // Select a high school recruit from search results
+  const selectHSPlayer = (player) => {
+    // Convert height from inches to feet-inches format
+    let heightStr = '';
+    if (player.height) {
+      const feet = Math.floor(player.height / 12);
+      const inches = Math.round(player.height % 12);
+      heightStr = `${feet}'${inches}"`;
+    }
+
+    setHighSchoolFormData({
+      name: player.name || '',
+      position: player.position || '',
+      high_school: player.highSchool || '',
+      hometown: player.city || '',
+      state: player.state || '',
+      height: heightStr,
+      weight: player.weight || '',
+      recruiting_cycle_year: player.recruitingClass || '',
+      recruiting_stars: player.stars || null,
+      recruiting_rating: player.rating || null,
+      recruiting_ranking: player.ranking || null,
+      committed_to: player.committedTo || '',
+      photo_url: ''
+    });
+
+    setSelectedHSPlayer(player);
+    setHsSearchResults([]);
+    setHsSearchQuery('');
+  };
+
+  // Clear HS player selection
+  const clearHSSelection = () => {
+    setSelectedHSPlayer(null);
+    setHighSchoolFormData({
+      name: '',
+      position: '',
+      high_school: '',
+      hometown: '',
+      state: '',
+      height: '',
+      weight: '',
+      recruiting_cycle_year: '',
+      recruiting_stars: null,
+      recruiting_rating: null,
+      recruiting_ranking: null,
+      photo_url: ''
+    });
+  };
+
+  // Search ESPN for NFL veterans
+  const handleNFLSearch = async (e) => {
+    e.preventDefault();
+    if (!nflSearchQuery.trim()) return;
+
+    setNflSearching(true);
+    try {
+      const response = await axios.get('/api/players/search-nfl', {
+        params: { name: nflSearchQuery }
+      });
+
+      console.log('NFL Search results:', response.data);
+      setNflSearchResults(response.data.data || []);
+    } catch (error) {
+      console.error('Error searching NFL:', error);
+      alert('Error searching NFL players. Please try again.');
+    } finally {
+      setNflSearching(false);
+    }
+  };
+
+  // Select an NFL player from search results
+  const selectNFLPlayer = async (player) => {
+    try {
+      const espnId = player.id || player.url?.match(/\/id\/(\d+)\//)?.[1];
+
+      if (!espnId) {
+        // Use basic data if no ESPN ID
+        setVeteranFormData({
+          name: player.name || '',
+          position: player.position || '',
+          nfl_team: player.team || '',
+          college: '',
+          height: '',
+          weight: '',
+          years_pro: '',
+          photo_url: player.image || ''
+        });
+        setSelectedNFLPlayer(player);
+        setNflSearchResults([]);
+        setNflSearchQuery('');
+        return;
+      }
+
+      // Fetch detailed NFL player data
+      const detailsResponse = await axios.get(`/api/players/nfl-details/${espnId}`);
+      const details = detailsResponse.data.data;
+
+      setVeteranFormData({
+        name: details.name || player.name || '',
+        position: details.position || player.position || '',
+        nfl_team: details.team || player.team || '',
+        college: details.college || '',
+        height: details.height || '',
+        weight: details.weight ? details.weight.replace(' lbs', '') : '',
+        years_pro: details.experience || '',
+        photo_url: details.photo_url || player.image || ''
+      });
+
+      setSelectedNFLPlayer({ ...player, ...details });
+      setNflSearchResults([]);
+      setNflSearchQuery('');
+    } catch (error) {
+      console.error('Error fetching NFL player details:', error);
+      // Fall back to basic data
+      setVeteranFormData({
+        name: player.name || '',
+        position: player.position || '',
+        nfl_team: player.team || '',
+        college: '',
+        height: '',
+        weight: '',
+        years_pro: '',
+        photo_url: player.image || ''
+      });
+      setSelectedNFLPlayer(player);
+      setNflSearchResults([]);
+      setNflSearchQuery('');
+    }
+  };
+
+  // Clear NFL player selection
+  const clearNFLSelection = () => {
+    setSelectedNFLPlayer(null);
+    setVeteranFormData({
+      name: '',
+      position: '',
+      nfl_team: '',
+      college: '',
+      height: '',
+      weight: '',
+      years_pro: '',
+      photo_url: ''
+    });
+  };
+
+  // Fetch detailed player data and populate form (college players)
   const selectPlayer = async (player) => {
     try {
-      // Extract ESPN ID from the player object or URL
       const espnId = player.id || player.url?.match(/\/id\/(\d+)\//)?.[1];
 
       if (!espnId) {
@@ -86,15 +307,13 @@ function AddPlayer() {
 
       console.log('Fetching details for ESPN ID:', espnId);
 
-      // Try to fetch detailed data, but fall back to search data if it fails
       try {
         const response = await axios.get(`/api/players/espn-details/${espnId}`);
         const playerData = response.data.data;
 
         console.log('✅ Got detailed player data:', playerData);
 
-        // Auto-populate form with detailed data
-        setFormData({
+        setCollegeFormData({
           name: playerData.name || player.name || '',
           position: playerData.position || '',
           school: playerData.school || player.school || '',
@@ -104,7 +323,7 @@ function AddPlayer() {
           height: playerData.height || '',
           weight: playerData.weight ? parseInt(playerData.weight) : '',
           class_year: playerData.class_year || '',
-          eligibility_year: new Date().getFullYear(),
+          eligibility_year: currentYear,
           espn_id: espnId || '',
           photo_url: playerData.photo_url || player.image || ''
         });
@@ -116,192 +335,116 @@ function AddPlayer() {
       } catch (detailError) {
         console.warn('⚠️ ESPN details API failed, trying CFBD:', detailError.message);
 
-        // Try to get detailed data from CFBD with fuzzy name matching
+        // Try CFBD fallback
         try {
           let cfbdPlayers = [];
-
-          // Try full name first
           console.log('🔍 Searching CFBD for:', player.name);
           let cfbdResponse = await axios.get('/api/players/search-cfbd', {
             params: { name: player.name }
           });
           cfbdPlayers = cfbdResponse.data.data || [];
-          console.log('📊 Full name search returned', cfbdPlayers.length, 'players');
 
-          // If no results, try name variations
           if (cfbdPlayers.length === 0) {
             const nameParts = player.name.split(' ');
             if (nameParts.length > 2) {
-              // Try removing first part (e.g., "Olaivavega Ioane" → "Vega Ioane")
               const shortName = nameParts.slice(1).join(' ');
-              console.log('🔍 Trying shortened name:', shortName);
               cfbdResponse = await axios.get('/api/players/search-cfbd', {
                 params: { name: shortName }
               });
               cfbdPlayers = cfbdResponse.data.data || [];
-              console.log('📊 Shortened name search returned', cfbdPlayers.length, 'players');
             }
 
-            // If still no results, try just last name
             if (cfbdPlayers.length === 0 && nameParts.length >= 2) {
               const lastName = nameParts[nameParts.length - 1];
-              console.log('🔍 Trying last name only:', lastName);
               cfbdResponse = await axios.get('/api/players/search-cfbd', {
                 params: { name: lastName }
               });
               cfbdPlayers = cfbdResponse.data.data || [];
-              console.log('📊 Last name search returned', cfbdPlayers.length, 'players');
             }
           }
 
-          // Try to find match by school
           let cfbdPlayer = null;
           const espnSchool = player.school?.toLowerCase() || '';
 
-          // Debug: Show what schools CFBD returned
-          if (cfbdPlayers.length > 0) {
-            console.log('🏫 CFBD schools found:', cfbdPlayers.map(p => p.school).join(', '));
-            console.log('🏫 ESPN school to match:', player.school);
-          }
+          cfbdPlayer = cfbdPlayers.find(p => p.school?.toLowerCase() === espnSchool);
 
-          // First, try exact school match
-          cfbdPlayer = cfbdPlayers.find(p =>
-            p.school?.toLowerCase() === espnSchool
-          );
-
-          // If no exact match, try partial school match
           if (!cfbdPlayer && espnSchool) {
             cfbdPlayer = cfbdPlayers.find(p => {
               const cfbdSchool = p.school?.toLowerCase() || '';
-              const matches = cfbdSchool.includes(espnSchool) || espnSchool.includes(cfbdSchool);
-              if (matches) {
-                console.log(`✓ Partial match: "${p.school}" matches "${player.school}"`);
-              }
-              return matches;
+              return cfbdSchool.includes(espnSchool) || espnSchool.includes(cfbdSchool);
             });
           }
 
-          // If still no match and we have multiple results, don't auto-fill
-          if (!cfbdPlayer && cfbdPlayers.length > 0) {
-            console.warn(`⚠️ Found ${cfbdPlayers.length} CFBD matches but none match school "${player.school}"`);
-            console.warn('   CFBD schools:', cfbdPlayers.map(p => `"${p.school}"`).join(', '));
-            console.warn('   Please verify player information manually');
-            // Don't use potentially wrong data - let user fill in manually
-            cfbdPlayer = null;
-          }
-
           if (cfbdPlayer) {
-            console.log('✅ Found CFBD data:', cfbdPlayer);
-
-            // Verify school match for safety
-            const schoolMatch = cfbdPlayer.school?.toLowerCase().includes(espnSchool) ||
-                               espnSchool.includes(cfbdPlayer.school?.toLowerCase() || '');
-            if (!schoolMatch) {
-              console.warn('⚠️ School mismatch detected!');
-              console.warn(`   ESPN: ${player.school}, CFBD: ${cfbdPlayer.school}`);
-            }
-
-            // If hometown is empty, try recruiting data for more details
+            // Fetch recruiting data if needed
             let recruitingData = null;
             if (!cfbdPlayer.hometown) {
               try {
-                // Use CFBD school name (e.g., "Florida") not ESPN name (e.g., "Florida Gators")
                 const teamName = cfbdPlayer.school || player.school;
-                console.log('🎓 Hometown empty, trying recruiting data for:', player.name, teamName);
                 const recruitResponse = await axios.get('/api/players/recruiting-data', {
-                  params: {
-                    name: player.name,
-                    team: teamName
-                  }
+                  params: { name: player.name, team: teamName }
                 });
-
                 const recruits = recruitResponse.data.data || [];
-                console.log('📊 Recruiting returned', recruits.length, 'results');
-
                 if (recruits.length > 0) {
                   recruitingData = recruits[0];
-                  console.log('✅ Found recruiting data:', recruitingData);
                 }
               } catch (recruitError) {
                 console.warn('⚠️ Recruiting data fetch failed:', recruitError.message);
               }
             }
 
-            // Merge ESPN + CFBD + Recruiting data FIRST (to get current school)
             const hometown = recruitingData?.hometown || cfbdPlayer.hometown || '';
             const state = recruitingData?.state || cfbdPlayer.state || '';
             const recruitingYear = recruitingData?.classYear || '';
             const schoolName = cfbdPlayer.school || player.school || '';
 
-            // Calculate class year from recruiting year
             let classYear = '';
             if (recruitingYear) {
-              const currentYear = new Date().getFullYear();
               const yearsInCollege = currentYear - recruitingYear + 1;
-
-              // Map years to class standings (default progression, user can override)
               const classMap = {
-                1: 'Freshman',
-                2: 'Sophomore',
-                3: 'Junior',
-                4: 'Senior',
-                5: 'Fifth Year'
+                1: 'Freshman', 2: 'Sophomore', 3: 'Junior',
+                4: 'Senior', 5: 'Fifth Year'
               };
               classYear = classMap[yearsInCollege] || '';
-              console.log(`📅 Recruiting year: ${recruitingYear}, Years in college: ${yearsInCollege}, Class: ${classYear}`);
             }
 
-            // Look up school in database to get normalized name and conference
+            // Look up school for conference
             let conference = '';
-            let normalizedSchoolName = schoolName; // Default to raw name if lookup fails
+            let normalizedSchoolName = schoolName;
             if (schoolName) {
               try {
-                console.log('🏫 Looking up school in database:', schoolName);
                 const schoolLookup = await axios.get('/api/schools/lookup', {
                   params: { name: schoolName }
                 });
-
                 if (schoolLookup.data.data) {
-                  // Use canonical school name from database for consistency
                   normalizedSchoolName = schoolLookup.data.data.school;
                   conference = schoolLookup.data.data.conference || '';
-                  console.log('✅ Normalized school name:', normalizedSchoolName);
-                  console.log('✅ Conference:', conference);
                 }
               } catch (lookupError) {
                 console.warn('⚠️ School lookup failed:', lookupError.message);
               }
             }
 
-            // Fetch transfer portal data (AFTER we have normalized school name)
+            // Fetch transfer data
             try {
-              console.log('🔄 Fetching transfer portal data...');
               const transferResponse = await axios.get('/api/players/transfer-data', {
                 params: {
                   name: player.name,
-                  school: normalizedSchoolName, // Pass current school for verification
-                  recruitingYear: recruitingYear || undefined // Pass recruiting year for better search range
+                  school: normalizedSchoolName,
+                  recruitingYear: recruitingYear || undefined
                 }
               });
-
               const transfers = transferResponse.data.data || [];
-              console.log('📊 Transfer portal returned', transfers.length, 'results');
-
               if (transfers.length > 0) {
                 setTransferData(transfers);
-                console.log('✅ Found verified transfer history:', transfers);
               } else {
                 setTransferData([]);
-                if (transferResponse.data.warning) {
-                  console.warn('⚠️', transferResponse.data.warning);
-                }
               }
             } catch (transferError) {
-              console.warn('⚠️ Transfer data fetch failed:', transferError.message);
               setTransferData([]);
             }
 
-            setFormData({
+            setCollegeFormData({
               name: player.name || '',
               position: cfbdPlayer.position || player.position || '',
               school: normalizedSchoolName,
@@ -311,17 +454,16 @@ function AddPlayer() {
               height: cfbdPlayer.height || '',
               weight: cfbdPlayer.weight || '',
               class_year: classYear,
-              eligibility_year: new Date().getFullYear(),
+              eligibility_year: currentYear,
               espn_id: espnId || '',
               photo_url: player.image || '',
-              // Recruiting data
               high_school: recruitingData?.highSchool || '',
               recruiting_class_year: recruitingData?.classYear || null,
               recruiting_stars: recruitingData?.stars || null,
               recruiting_rating: recruitingData?.rating || null,
               recruiting_ranking: recruitingData?.ranking || null,
-              recruiting_state_ranking: null, // CFBD doesn't provide this
-              recruiting_position_ranking: null, // CFBD doesn't provide this
+              recruiting_state_ranking: null,
+              recruiting_position_ranking: null,
               original_commitment: recruitingData?.school || normalizedSchoolName
             });
 
@@ -339,13 +481,10 @@ function AddPlayer() {
             throw new Error('No CFBD data found');
           }
         } catch (cfbdError) {
-          console.warn('⚠️ CFBD also failed, using ESPN search data only:', cfbdError.message);
-
-          // Final fallback: use ESPN search data only, but normalize school name
+          // Final fallback: use ESPN search data only
           let normalizedSchool = player.school || '';
           let fallbackConference = '';
 
-          // Try to normalize school name even in fallback
           if (player.school) {
             try {
               const schoolLookup = await axios.get('/api/schools/lookup', {
@@ -354,14 +493,13 @@ function AddPlayer() {
               if (schoolLookup.data.data) {
                 normalizedSchool = schoolLookup.data.data.school;
                 fallbackConference = schoolLookup.data.data.conference || '';
-                console.log('✅ Normalized ESPN school:', normalizedSchool);
               }
             } catch (lookupError) {
-              console.warn('⚠️ School normalization failed, using raw ESPN name');
+              console.warn('⚠️ School normalization failed');
             }
           }
 
-          setFormData({
+          setCollegeFormData({
             name: player.name || '',
             position: player.position || '',
             school: normalizedSchool,
@@ -371,10 +509,9 @@ function AddPlayer() {
             height: '',
             weight: '',
             class_year: '',
-            eligibility_year: new Date().getFullYear(),
+            eligibility_year: currentYear,
             espn_id: espnId || '',
             photo_url: player.image || '',
-            // Recruiting data - empty for fallback
             high_school: '',
             recruiting_class_year: null,
             recruiting_stars: null,
@@ -394,24 +531,26 @@ function AddPlayer() {
         }
       }
 
-      setSearchResults([]); // Clear search results
-      setSearchQuery(''); // Clear search
+      setSearchResults([]);
+      setSearchQuery('');
     } catch (error) {
       console.error('Error selecting player:', error);
       alert('Error loading player data. You can still enter manually.');
     }
   };
 
-  const handleSubmit = async (e) => {
+  // Submit handlers for each player type
+  const handleSubmitCollege = async (e) => {
     e.preventDefault();
     try {
-      // Create player
-      const response = await axios.post('/api/players', formData);
+      const response = await axios.post('/api/players', {
+        ...collegeFormData,
+        player_type: 'college'
+      });
       const playerId = response.data.data.id;
 
       // Save transfer history if any
       if (transferData.length > 0) {
-        console.log(`💾 Saving ${transferData.length} transfer records...`);
         for (const transfer of transferData) {
           try {
             await axios.post('/api/players/transfers', {
@@ -427,83 +566,135 @@ function AddPlayer() {
             console.warn('⚠️ Failed to save transfer:', transferError.message);
           }
         }
-        console.log('✅ Transfer history saved');
       }
 
       // Assign agents if any selected
       if (selectedAgents.length > 0) {
-        console.log(`👥 Assigning ${selectedAgents.length} agents...`);
         for (const agentId of selectedAgents) {
           try {
-            await axios.post('/api/players/assign-agent', {
-              playerId,
-              agentId
-            });
+            await axios.post('/api/players/assign-agent', { playerId, agentId });
           } catch (agentError) {
             console.warn('⚠️ Failed to assign agent:', agentError.message);
           }
         }
-        console.log('✅ Agents assigned');
       }
 
-      alert('Player added successfully!');
+      alert('College player added successfully!');
       navigate(`/players/${playerId}`);
     } catch (error) {
-      console.error('Error adding player:', error);
-
-      // Handle duplicate player error
-      if (error.response?.status === 409) {
-        const errorData = error.response.data;
-        const existingPlayerId = errorData.existingPlayerId;
-
-        if (existingPlayerId) {
-          const viewExisting = window.confirm(
-            `${errorData.message}\n\nWould you like to view the existing player?`
-          );
-          if (viewExisting) {
-            navigate(`/players/${existingPlayerId}`);
-          }
-        } else {
-          alert(errorData.message || 'This player already exists in the database');
-        }
-      } else {
-        alert('Error adding player: ' + (error.response?.data?.message || error.message));
-      }
+      handleSubmitError(error);
     }
   };
 
-  const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+  const handleSubmitHighSchool = async (e) => {
+    e.preventDefault();
+    try {
+      const response = await axios.post('/api/players', {
+        name: highSchoolFormData.name,
+        position: highSchoolFormData.position,
+        high_school: highSchoolFormData.high_school,
+        hometown: highSchoolFormData.hometown,
+        state: highSchoolFormData.state,
+        height: highSchoolFormData.height,
+        weight: highSchoolFormData.weight,
+        recruiting_cycle_year: highSchoolFormData.recruiting_cycle_year,
+        recruiting_stars: highSchoolFormData.recruiting_stars,
+        recruiting_rating: highSchoolFormData.recruiting_rating,
+        recruiting_ranking: highSchoolFormData.recruiting_ranking,
+        photo_url: highSchoolFormData.photo_url,
+        player_type: 'high_school',
+        eligibility_year: currentYear
+      });
+      const playerId = response.data.data.id;
+
+      // Assign agents if any selected
+      if (selectedAgents.length > 0) {
+        for (const agentId of selectedAgents) {
+          try {
+            await axios.post('/api/players/assign-agent', { playerId, agentId });
+          } catch (agentError) {
+            console.warn('⚠️ Failed to assign agent:', agentError.message);
+          }
+        }
+      }
+
+      alert('High school player added successfully!');
+      navigate(`/players/${playerId}`);
+    } catch (error) {
+      handleSubmitError(error);
+    }
+  };
+
+  const handleSubmitVeteran = async (e) => {
+    e.preventDefault();
+    try {
+      const response = await axios.post('/api/players', {
+        name: veteranFormData.name,
+        position: veteranFormData.position,
+        school: veteranFormData.college, // Store college as school
+        nfl_team: veteranFormData.nfl_team,
+        height: veteranFormData.height,
+        weight: veteranFormData.weight,
+        years_pro: veteranFormData.years_pro,
+        photo_url: veteranFormData.photo_url,
+        player_type: 'veteran',
+        eligibility_year: currentYear
+      });
+      const playerId = response.data.data.id;
+
+      // Assign agents if any selected
+      if (selectedAgents.length > 0) {
+        for (const agentId of selectedAgents) {
+          try {
+            await axios.post('/api/players/assign-agent', { playerId, agentId });
+          } catch (agentError) {
+            console.warn('⚠️ Failed to assign agent:', agentError.message);
+          }
+        }
+      }
+
+      alert('NFL veteran added successfully!');
+      navigate(`/players/${playerId}`);
+    } catch (error) {
+      handleSubmitError(error);
+    }
+  };
+
+  const handleSubmitError = (error) => {
+    console.error('Error adding player:', error);
+    if (error.response?.status === 409) {
+      const errorData = error.response.data;
+      const existingPlayerId = errorData.existingPlayerId;
+      if (existingPlayerId) {
+        const viewExisting = window.confirm(
+          `${errorData.message}\n\nWould you like to view the existing player?`
+        );
+        if (viewExisting) {
+          navigate(`/players/${existingPlayerId}`);
+        }
+      } else {
+        alert(errorData.message || 'This player already exists in the database');
+      }
+    } else {
+      alert('Error adding player: ' + (error.response?.data?.message || error.message));
+    }
   };
 
   const clearSelection = () => {
     setSelectedPlayer(null);
-    setFormData({
-      name: '',
-      position: '',
-      school: '',
-      conference: '',
-      hometown: '',
-      state: '',
-      height: '',
-      weight: '',
-      class_year: '',
-      eligibility_year: new Date().getFullYear(),
-      espn_id: '',
-      photo_url: '',
-      // Recruiting data
-      high_school: '',
-      recruiting_class_year: null,
-      recruiting_stars: null,
-      recruiting_rating: null,
-      recruiting_ranking: null,
-      recruiting_state_ranking: null,
-      recruiting_position_ranking: null,
+    setCollegeFormData({
+      name: '', position: '', school: '', conference: '',
+      hometown: '', state: '', height: '', weight: '', class_year: '',
+      eligibility_year: currentYear, espn_id: '', photo_url: '',
+      high_school: '', recruiting_class_year: null, recruiting_stars: null,
+      recruiting_rating: null, recruiting_ranking: null,
+      recruiting_state_ranking: null, recruiting_position_ranking: null,
       original_commitment: ''
     });
+    setTransferData([]);
   };
 
-  // Get agent initials for avatar
+  // Agent helpers
   const getAgentInitials = (agent) => {
     if (agent.first_name && agent.last_name) {
       return `${agent.first_name[0]}${agent.last_name[0]}`.toUpperCase();
@@ -517,7 +708,6 @@ function AddPlayer() {
     return '?';
   };
 
-  // Get agent display name
   const getAgentDisplayName = (agent) => {
     if (agent.first_name || agent.last_name) {
       return `${agent.first_name || ''} ${agent.last_name || ''}`.trim();
@@ -525,7 +715,6 @@ function AddPlayer() {
     return agent.name || 'Unknown Agent';
   };
 
-  // Toggle agent selection
   const toggleAgentSelection = (agentId) => {
     if (selectedAgents.includes(agentId)) {
       setSelectedAgents(selectedAgents.filter(id => id !== agentId));
@@ -534,72 +723,71 @@ function AddPlayer() {
     }
   };
 
-  return (
-    <div className="add-player">
-      <h2>Add New Player</h2>
+  // Render agent selection grid (shared across all tabs)
+  const renderAgentSelection = () => (
+    <div className="agent-assignment-section">
+      <label>
+        Assign Recruiting Agents
+        {selectedAgents.length > 0 && (
+          <span className="agent-selection-counter">{selectedAgents.length} selected</span>
+        )}
+      </label>
+      {agents.length === 0 ? (
+        <div className="agents-empty-state">No agents available</div>
+      ) : (
+        <div className="agents-grid">
+          {agents.map(agent => (
+            <div
+              key={agent.id}
+              className={`agent-card ${selectedAgents.includes(agent.id) ? 'selected' : ''}`}
+              onClick={() => toggleAgentSelection(agent.id)}
+            >
+              <div className="agent-card-checkbox"></div>
+              <div className="agent-card-initials">{getAgentInitials(agent)}</div>
+              <div className="agent-card-name">{getAgentDisplayName(agent)}</div>
+            </div>
+          ))}
+        </div>
+      )}
+      <small className="agent-assignment-help">
+        Click on agent cards to assign them to this player
+      </small>
+    </div>
+  );
 
+  // Render College Player Form
+  const renderCollegeForm = () => (
+    <>
       {/* ESPN Search Section */}
-      <div className="espn-search-section" style={{ marginBottom: '30px', padding: '20px', background: '#f5f5f5', borderRadius: '8px' }}>
-        <h3 style={{ marginTop: 0 }}>🔍 Search ESPN</h3>
-        <form onSubmit={handleSearch} style={{ display: 'flex', gap: '10px' }}>
+      <div className="espn-search-section">
+        <h3>Search ESPN</h3>
+        <form onSubmit={handleSearch} className="search-form">
           <input
             type="text"
-            placeholder="Search for a player (e.g., Caleb Banks)..."
+            placeholder="Search for a college player..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            style={{ flex: 1, padding: '10px', fontSize: '16px', borderRadius: '4px', border: '1px solid #ddd' }}
+            className="search-input"
           />
-          <button
-            type="submit"
-            className="btn btn-primary"
-            disabled={searching || !searchQuery.trim()}
-          >
+          <button type="submit" className="btn btn-primary" disabled={searching || !searchQuery.trim()}>
             {searching ? 'Searching...' : 'Search'}
           </button>
         </form>
 
-        {/* Search Results */}
         {searchResults.length > 0 && (
-          <div style={{ marginTop: '20px' }}>
+          <div className="search-results">
             <h4>Results ({searchResults.length})</h4>
-            <div style={{ display: 'grid', gap: '10px' }}>
+            <div className="results-grid">
               {searchResults.map((player, index) => (
-                <div
-                  key={index}
-                  onClick={() => selectPlayer(player)}
-                  style={{
-                    padding: '15px',
-                    background: 'white',
-                    border: '1px solid #ddd',
-                    borderRadius: '8px',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '15px',
-                    transition: 'all 0.2s'
-                  }}
-                  onMouseEnter={(e) => e.currentTarget.style.borderColor = '#007bff'}
-                  onMouseLeave={(e) => e.currentTarget.style.borderColor = '#ddd'}
-                >
+                <div key={index} onClick={() => selectPlayer(player)} className="search-result-card">
                   {player.image && (
-                    <img
-                      src={player.image}
-                      alt={player.name}
-                      style={{ width: '50px', height: '50px', borderRadius: '50%', objectFit: 'cover' }}
-                    />
+                    <img src={player.image} alt={player.name} className="player-image" />
                   )}
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: 'bold', fontSize: '16px' }}>{player.name}</div>
-                    <div style={{ color: '#666', fontSize: '14px' }}>
-                      {player.position} • {player.school}
-                    </div>
+                  <div className="player-info">
+                    <div className="player-name">{player.name}</div>
+                    <div className="player-details">{player.position} • {player.school}</div>
                   </div>
-                  <button
-                    className="btn btn-sm btn-primary"
-                    style={{ pointerEvents: 'none' }}
-                  >
-                    Select
-                  </button>
+                  <button className="btn btn-sm btn-primary" style={{ pointerEvents: 'none' }}>Select</button>
                 </div>
               ))}
             </div>
@@ -607,44 +795,34 @@ function AddPlayer() {
         )}
       </div>
 
-      {/* Show selected player preview */}
+      {/* Selected player preview */}
       {selectedPlayer && (
-        <div style={{ marginBottom: '20px', padding: '15px', background: '#e8f5e9', borderRadius: '8px', border: '1px solid #4caf50' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+        <div className="selected-player-preview">
+          <div className="preview-content">
             {selectedPlayer.photo_url && (
-              <img
-                src={selectedPlayer.photo_url}
-                alt={selectedPlayer.name}
-                style={{ width: '60px', height: '60px', borderRadius: '50%', objectFit: 'cover' }}
-              />
+              <img src={selectedPlayer.photo_url} alt={selectedPlayer.name} className="preview-image" />
             )}
-            <div style={{ flex: 1 }}>
-              <div style={{ fontWeight: 'bold', color: '#2e7d32' }}>✓ Selected from ESPN</div>
-              <div style={{ fontSize: '18px', fontWeight: 'bold' }}>{selectedPlayer.name}</div>
-              <div style={{ color: '#666' }}>
-                {selectedPlayer.position} • {selectedPlayer.school}
-              </div>
+            <div className="preview-info">
+              <div className="preview-badge">✓ Selected from ESPN</div>
+              <div className="preview-name">{selectedPlayer.name}</div>
+              <div className="preview-details">{selectedPlayer.position} • {selectedPlayer.school}</div>
             </div>
-            <button
-              type="button"
-              onClick={clearSelection}
-              className="btn btn-secondary btn-sm"
-            >
+            <button type="button" onClick={clearSelection} className="btn btn-secondary btn-sm">
               Clear & Search Again
             </button>
           </div>
         </div>
       )}
 
-      {/* Player Form */}
-      <form onSubmit={handleSubmit} className="player-form">
+      {/* College Player Form */}
+      <form onSubmit={handleSubmitCollege} className="player-form">
         <div className="form-group">
           <label>Name *</label>
           <input
             type="text"
             name="name"
-            value={formData.name}
-            onChange={handleChange}
+            value={collegeFormData.name}
+            onChange={(e) => setCollegeFormData({ ...collegeFormData, name: e.target.value })}
             required
           />
         </div>
@@ -655,8 +833,8 @@ function AddPlayer() {
             <input
               type="text"
               name="position"
-              value={formData.position}
-              onChange={handleChange}
+              value={collegeFormData.position}
+              onChange={(e) => setCollegeFormData({ ...collegeFormData, position: e.target.value })}
               required
             />
           </div>
@@ -665,8 +843,8 @@ function AddPlayer() {
             <label>Class Year *</label>
             <select
               name="class_year"
-              value={formData.class_year}
-              onChange={handleChange}
+              value={collegeFormData.class_year}
+              onChange={(e) => setCollegeFormData({ ...collegeFormData, class_year: e.target.value })}
               required
             >
               <option value="">Select...</option>
@@ -685,13 +863,9 @@ function AddPlayer() {
           <div className="form-group">
             <label>School *</label>
             <SchoolAutocomplete
-              value={formData.school}
+              value={collegeFormData.school}
               onChange={(school, conference) => {
-                setFormData({
-                  ...formData,
-                  school: school,
-                  conference: conference
-                });
+                setCollegeFormData({ ...collegeFormData, school, conference });
               }}
               required
             />
@@ -702,10 +876,9 @@ function AddPlayer() {
             <input
               type="text"
               name="conference"
-              value={formData.conference}
-              onChange={handleChange}
+              value={collegeFormData.conference}
               disabled
-              style={{ background: '#f0f0f0', color: '#666' }}
+              className="disabled-input"
             />
           </div>
         </div>
@@ -716,8 +889,8 @@ function AddPlayer() {
             <input
               type="text"
               name="height"
-              value={formData.height}
-              onChange={handleChange}
+              value={collegeFormData.height}
+              onChange={(e) => setCollegeFormData({ ...collegeFormData, height: e.target.value })}
               placeholder="e.g., 6'6&quot;"
             />
           </div>
@@ -727,8 +900,8 @@ function AddPlayer() {
             <input
               type="number"
               name="weight"
-              value={formData.weight}
-              onChange={handleChange}
+              value={collegeFormData.weight}
+              onChange={(e) => setCollegeFormData({ ...collegeFormData, weight: e.target.value })}
               placeholder="e.g., 330"
             />
           </div>
@@ -740,8 +913,8 @@ function AddPlayer() {
             <input
               type="text"
               name="hometown"
-              value={formData.hometown}
-              onChange={handleChange}
+              value={collegeFormData.hometown}
+              onChange={(e) => setCollegeFormData({ ...collegeFormData, hometown: e.target.value })}
             />
           </div>
 
@@ -750,70 +923,452 @@ function AddPlayer() {
             <input
               type="text"
               name="state"
-              value={formData.state}
-              onChange={handleChange}
+              value={collegeFormData.state}
+              onChange={(e) => setCollegeFormData({ ...collegeFormData, state: e.target.value })}
             />
           </div>
         </div>
 
-        {formData.espn_id && (
+        {collegeFormData.espn_id && (
           <div className="form-group">
             <label>ESPN ID</label>
-            <input
-              type="text"
-              name="espn_id"
-              value={formData.espn_id}
-              onChange={handleChange}
-              disabled
-              style={{ background: '#f0f0f0' }}
-            />
+            <input type="text" value={collegeFormData.espn_id} disabled className="disabled-input" />
           </div>
         )}
 
-        <div className="agent-assignment-section">
-          <label>
-            Assign Recruiting Agents
-            {selectedAgents.length > 0 && (
-              <span className="agent-selection-counter">{selectedAgents.length} selected</span>
-            )}
-          </label>
-          {agents.length === 0 ? (
-            <div className="agents-empty-state">
-              No agents available
-            </div>
-          ) : (
-            <div className="agents-grid">
-              {agents.map(agent => (
-                <div
-                  key={agent.id}
-                  className={`agent-card ${selectedAgents.includes(agent.id) ? 'selected' : ''}`}
-                  onClick={() => toggleAgentSelection(agent.id)}
-                >
-                  <div className="agent-card-checkbox"></div>
-                  <div className="agent-card-initials">
-                    {getAgentInitials(agent)}
-                  </div>
-                  <div className="agent-card-name">
-                    {getAgentDisplayName(agent)}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-          <small className="agent-assignment-help">
-            Click on agent cards to assign them to this player
-          </small>
-        </div>
+        {renderAgentSelection()}
 
         <div className="form-actions">
           <button type="button" onClick={() => navigate('/players')} className="btn btn-secondary">
             Cancel
           </button>
-          <button type="submit" className="btn btn-primary">
-            Add Player
-          </button>
+          <button type="submit" className="btn btn-primary">Add College Player</button>
         </div>
       </form>
+    </>
+  );
+
+  // Render High School Player Form
+  const renderHighSchoolForm = () => (
+    <>
+      {/* CFBD Recruiting Search Section */}
+      <div className="cfbd-search-section">
+        <h3>Search Recruiting Database</h3>
+        <form onSubmit={handleHSSearch} className="search-form">
+          <input
+            type="text"
+            placeholder="Search for a high school recruit..."
+            value={hsSearchQuery}
+            onChange={(e) => setHsSearchQuery(e.target.value)}
+            className="search-input"
+          />
+          <button type="submit" className="btn btn-primary" disabled={hsSearching || !hsSearchQuery.trim()}>
+            {hsSearching ? 'Searching...' : 'Search'}
+          </button>
+        </form>
+
+        {hsSearchResults.length > 0 && (
+          <div className="search-results">
+            <h4>Results ({hsSearchResults.length})</h4>
+            <div className="results-grid hs-results">
+              {hsSearchResults.map((player, index) => (
+                <div key={index} onClick={() => selectHSPlayer(player)} className="search-result-card hs-card">
+                  <div className="hs-player-info">
+                    <div className="player-name">
+                      {player.name}
+                      {player.stars && (
+                        <span className="stars-badge">{'⭐'.repeat(player.stars)}</span>
+                      )}
+                    </div>
+                    <div className="player-details">
+                      {player.position} • {player.highSchool} ({player.state})
+                    </div>
+                    <div className="player-meta">
+                      <span className="class-badge">Class of {player.recruitingClass}</span>
+                      {player.ranking && <span className="ranking-badge">#{player.ranking} National</span>}
+                      {player.committedTo && <span className="committed-badge">Committed: {player.committedTo}</span>}
+                    </div>
+                  </div>
+                  <button className="btn btn-sm btn-primary" style={{ pointerEvents: 'none' }}>Select</button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Selected HS player preview */}
+      {selectedHSPlayer && (
+        <div className="selected-player-preview hs-preview">
+          <div className="preview-content">
+            <div className="hs-avatar">
+              {selectedHSPlayer.stars ? '⭐'.repeat(selectedHSPlayer.stars) : '🏈'}
+            </div>
+            <div className="preview-info">
+              <div className="preview-badge">✓ Selected from Recruiting Database</div>
+              <div className="preview-name">{selectedHSPlayer.name}</div>
+              <div className="preview-details">
+                {selectedHSPlayer.position} • {selectedHSPlayer.highSchool} ({selectedHSPlayer.state}) • Class of {selectedHSPlayer.recruitingClass}
+              </div>
+              {selectedHSPlayer.committedTo && (
+                <div className="preview-commitment">Committed to {selectedHSPlayer.committedTo}</div>
+              )}
+            </div>
+            <button type="button" onClick={clearHSSelection} className="btn btn-secondary btn-sm">
+              Clear & Search Again
+            </button>
+          </div>
+        </div>
+      )}
+
+      <form onSubmit={handleSubmitHighSchool} className="player-form">
+        <div className="form-info-banner">
+          <span className="info-icon">ℹ️</span>
+          <span>High school players can be upgraded to college players once they commit and enroll.</span>
+        </div>
+
+        <div className="form-group">
+          <label>Name *</label>
+          <input
+            type="text"
+            name="name"
+            value={highSchoolFormData.name}
+            onChange={(e) => setHighSchoolFormData({ ...highSchoolFormData, name: e.target.value })}
+            required
+            placeholder="First Last"
+          />
+        </div>
+
+        <div className="form-row">
+          <div className="form-group">
+            <label>Position *</label>
+            <input
+              type="text"
+              name="position"
+              value={highSchoolFormData.position}
+              onChange={(e) => setHighSchoolFormData({ ...highSchoolFormData, position: e.target.value })}
+              required
+              placeholder="e.g., QB, WR, OT"
+            />
+          </div>
+
+          <div className="form-group">
+            <label>Recruiting Class *</label>
+            <select
+              name="recruiting_cycle_year"
+              value={highSchoolFormData.recruiting_cycle_year}
+              onChange={(e) => setHighSchoolFormData({ ...highSchoolFormData, recruiting_cycle_year: parseInt(e.target.value) })}
+              required
+            >
+              <option value="">Select class year...</option>
+              {recruitingClassYears.map(year => (
+                <option key={year} value={year}>Class of {year}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <div className="form-row">
+          <div className="form-group">
+            <label>High School *</label>
+            <input
+              type="text"
+              name="high_school"
+              value={highSchoolFormData.high_school}
+              onChange={(e) => setHighSchoolFormData({ ...highSchoolFormData, high_school: e.target.value })}
+              required
+              placeholder="High school name"
+            />
+          </div>
+
+          <div className="form-group">
+            <label>State *</label>
+            <input
+              type="text"
+              name="state"
+              value={highSchoolFormData.state}
+              onChange={(e) => setHighSchoolFormData({ ...highSchoolFormData, state: e.target.value })}
+              required
+              placeholder="e.g., TX, CA, FL"
+            />
+          </div>
+        </div>
+
+        <div className="form-group">
+          <label>Hometown</label>
+          <input
+            type="text"
+            name="hometown"
+            value={highSchoolFormData.hometown}
+            onChange={(e) => setHighSchoolFormData({ ...highSchoolFormData, hometown: e.target.value })}
+            placeholder="City name"
+          />
+        </div>
+
+        <div className="form-row">
+          <div className="form-group">
+            <label>Height</label>
+            <input
+              type="text"
+              name="height"
+              value={highSchoolFormData.height}
+              onChange={(e) => setHighSchoolFormData({ ...highSchoolFormData, height: e.target.value })}
+              placeholder="e.g., 6'2&quot;"
+            />
+          </div>
+
+          <div className="form-group">
+            <label>Weight (lbs)</label>
+            <input
+              type="number"
+              name="weight"
+              value={highSchoolFormData.weight}
+              onChange={(e) => setHighSchoolFormData({ ...highSchoolFormData, weight: e.target.value })}
+              placeholder="e.g., 220"
+            />
+          </div>
+        </div>
+
+        <div className="form-section-header">Recruiting Rankings (Optional)</div>
+
+        <div className="form-row">
+          <div className="form-group">
+            <label>Stars</label>
+            <select
+              name="recruiting_stars"
+            value={highSchoolFormData.recruiting_stars || ''}
+            onChange={(e) => setHighSchoolFormData({ ...highSchoolFormData, recruiting_stars: e.target.value ? parseInt(e.target.value) : null })}
+          >
+            <option value="">Select...</option>
+            <option value="5">⭐⭐⭐⭐⭐ 5-Star</option>
+            <option value="4">⭐⭐⭐⭐ 4-Star</option>
+            <option value="3">⭐⭐⭐ 3-Star</option>
+            <option value="2">⭐⭐ 2-Star</option>
+          </select>
+        </div>
+
+        <div className="form-group">
+          <label>National Ranking</label>
+          <input
+            type="number"
+            name="recruiting_ranking"
+            value={highSchoolFormData.recruiting_ranking || ''}
+            onChange={(e) => setHighSchoolFormData({ ...highSchoolFormData, recruiting_ranking: e.target.value ? parseInt(e.target.value) : null })}
+            placeholder="e.g., 15"
+          />
+        </div>
+      </div>
+
+      {renderAgentSelection()}
+
+      <div className="form-actions">
+        <button type="button" onClick={() => navigate('/players')} className="btn btn-secondary">
+          Cancel
+        </button>
+        <button type="submit" className="btn btn-primary">Add High School Player</button>
+      </div>
+    </form>
+    </>
+  );
+
+  // Render NFL Veteran Form
+  const renderVeteranForm = () => (
+    <>
+      {/* ESPN NFL Search Section */}
+      <div className="espn-search-section nfl-search">
+        <h3>Search ESPN NFL Players</h3>
+        <form onSubmit={handleNFLSearch} className="search-form">
+          <input
+            type="text"
+            placeholder="Search for an NFL player..."
+            value={nflSearchQuery}
+            onChange={(e) => setNflSearchQuery(e.target.value)}
+            className="search-input"
+          />
+          <button type="submit" className="btn btn-primary" disabled={nflSearching || !nflSearchQuery.trim()}>
+            {nflSearching ? 'Searching...' : 'Search'}
+          </button>
+        </form>
+
+        {nflSearchResults.length > 0 && (
+          <div className="search-results">
+            <h4>Results ({nflSearchResults.length})</h4>
+            <div className="results-grid">
+              {nflSearchResults.map((player, index) => (
+                <div key={index} onClick={() => selectNFLPlayer(player)} className="search-result-card">
+                  {player.image && (
+                    <img src={player.image} alt={player.name} className="player-image" />
+                  )}
+                  <div className="player-info">
+                    <div className="player-name">{player.name}</div>
+                    <div className="player-details">{player.position} • {player.team}</div>
+                  </div>
+                  <button className="btn btn-sm btn-primary" style={{ pointerEvents: 'none' }}>Select</button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Selected NFL player preview */}
+      {selectedNFLPlayer && (
+        <div className="selected-player-preview nfl-preview">
+          <div className="preview-content">
+            {selectedNFLPlayer.photo_url || selectedNFLPlayer.image ? (
+              <img src={selectedNFLPlayer.photo_url || selectedNFLPlayer.image} alt={selectedNFLPlayer.name} className="preview-image" />
+            ) : null}
+            <div className="preview-info">
+              <div className="preview-badge nfl-badge">✓ Selected from ESPN NFL</div>
+              <div className="preview-name">{selectedNFLPlayer.name}</div>
+              <div className="preview-details">{selectedNFLPlayer.position} • {selectedNFLPlayer.team || veteranFormData.nfl_team}</div>
+            </div>
+            <button type="button" onClick={clearNFLSelection} className="btn btn-secondary btn-sm">
+              Clear & Search Again
+            </button>
+          </div>
+        </div>
+      )}
+
+      <form onSubmit={handleSubmitVeteran} className="player-form">
+        <div className="form-info-banner veteran">
+          <span className="info-icon">🏈</span>
+          <span>NFL veterans are players who have already played professionally.</span>
+        </div>
+
+        <div className="form-group">
+          <label>Name *</label>
+          <input
+            type="text"
+            name="name"
+            value={veteranFormData.name}
+            onChange={(e) => setVeteranFormData({ ...veteranFormData, name: e.target.value })}
+            required
+            placeholder="First Last"
+          />
+        </div>
+
+        <div className="form-row">
+          <div className="form-group">
+            <label>Position *</label>
+            <input
+              type="text"
+              name="position"
+              value={veteranFormData.position}
+              onChange={(e) => setVeteranFormData({ ...veteranFormData, position: e.target.value })}
+              required
+              placeholder="e.g., QB, WR, OT"
+            />
+          </div>
+
+          <div className="form-group">
+            <label>NFL Team</label>
+            <input
+              type="text"
+              name="nfl_team"
+              value={veteranFormData.nfl_team}
+              onChange={(e) => setVeteranFormData({ ...veteranFormData, nfl_team: e.target.value })}
+              placeholder="e.g., Dallas Cowboys, Free Agent"
+            />
+          </div>
+        </div>
+
+        <div className="form-row">
+          <div className="form-group">
+            <label>College</label>
+            <input
+              type="text"
+              name="college"
+              value={veteranFormData.college}
+              onChange={(e) => setVeteranFormData({ ...veteranFormData, college: e.target.value })}
+              placeholder="College attended"
+            />
+          </div>
+
+          <div className="form-group">
+            <label>Years Pro</label>
+            <input
+              type="number"
+              name="years_pro"
+              value={veteranFormData.years_pro}
+              onChange={(e) => setVeteranFormData({ ...veteranFormData, years_pro: e.target.value })}
+              placeholder="e.g., 3"
+              min="0"
+            />
+          </div>
+        </div>
+
+        <div className="form-row">
+          <div className="form-group">
+            <label>Height</label>
+            <input
+              type="text"
+              name="height"
+              value={veteranFormData.height}
+              onChange={(e) => setVeteranFormData({ ...veteranFormData, height: e.target.value })}
+              placeholder="e.g., 6'4&quot;"
+            />
+          </div>
+
+          <div className="form-group">
+            <label>Weight (lbs)</label>
+            <input
+              type="number"
+              name="weight"
+              value={veteranFormData.weight}
+              onChange={(e) => setVeteranFormData({ ...veteranFormData, weight: e.target.value })}
+              placeholder="e.g., 250"
+            />
+          </div>
+        </div>
+
+        {renderAgentSelection()}
+
+        <div className="form-actions">
+          <button type="button" onClick={() => navigate('/players')} className="btn btn-secondary">
+            Cancel
+          </button>
+          <button type="submit" className="btn btn-primary">Add NFL Veteran</button>
+        </div>
+      </form>
+    </>
+  );
+
+  return (
+    <div className="add-player">
+      <h2>Add New Player</h2>
+
+      {/* Tab Navigation */}
+      <div className="player-type-tabs">
+        <button
+          className={`tab-button ${activeTab === TABS.HIGH_SCHOOL ? 'active' : ''}`}
+          onClick={() => setActiveTab(TABS.HIGH_SCHOOL)}
+        >
+          <span className="tab-icon">🎓</span>
+          High School
+        </button>
+        <button
+          className={`tab-button ${activeTab === TABS.COLLEGE ? 'active' : ''}`}
+          onClick={() => setActiveTab(TABS.COLLEGE)}
+        >
+          <span className="tab-icon">🏟️</span>
+          College
+        </button>
+        <button
+          className={`tab-button ${activeTab === TABS.VETERAN ? 'active' : ''}`}
+          onClick={() => setActiveTab(TABS.VETERAN)}
+        >
+          <span className="tab-icon">🏈</span>
+          NFL Veteran
+        </button>
+      </div>
+
+      {/* Tab Content */}
+      <div className="tab-content">
+        {activeTab === TABS.COLLEGE && renderCollegeForm()}
+        {activeTab === TABS.HIGH_SCHOOL && renderHighSchoolForm()}
+        {activeTab === TABS.VETERAN && renderVeteranForm()}
+      </div>
     </div>
   );
 }

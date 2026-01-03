@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import axios from '../api/axios';
 import { formatHeight } from '../utils/formatters';
 import MaterialEventForm from '../components/MaterialEventForm';
+import SchoolAutocomplete from '../components/SchoolAutocomplete';
 import '../styles/PlayerDetail.css';
 
 function PlayerDetail() {
@@ -17,6 +18,56 @@ function PlayerDetail() {
   const [materialTypes, setMaterialTypes] = useState([]);
   const [agents, setAgents] = useState([]);
   const [editingStatus, setEditingStatus] = useState(false);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [upgradeData, setUpgradeData] = useState({
+    school: '',
+    conference: '',
+    class_year: 'Freshman',
+    espn_id: '',
+    photo_url: '',
+    height: '',
+    weight: ''
+  });
+
+  // ESPN search state for upgrade to college modal
+  const [upgradeSearchQuery, setUpgradeSearchQuery] = useState('');
+  const [upgradeSearchResults, setUpgradeSearchResults] = useState([]);
+  const [upgradeSearching, setUpgradeSearching] = useState(false);
+  const [selectedUpgradePlayer, setSelectedUpgradePlayer] = useState(null);
+
+  // Upgrade to Veteran state
+  const [showVeteranModal, setShowVeteranModal] = useState(false);
+  const [veteranUpgradeData, setVeteranUpgradeData] = useState({
+    nfl_team: '',
+    years_pro: 1,
+    espn_id: '',
+    photo_url: '',
+    height: '',
+    weight: ''
+  });
+
+  // NFL search state for veteran upgrade modal
+  const [veteranSearchQuery, setVeteranSearchQuery] = useState('');
+  const [veteranSearchResults, setVeteranSearchResults] = useState([]);
+  const [veteranSearching, setVeteranSearching] = useState(false);
+  const [selectedVeteranPlayer, setSelectedVeteranPlayer] = useState(null);
+
+  // Connect to ESPN/CFBD state
+  const [showConnectModal, setShowConnectModal] = useState(false);
+  const [connectSearchQuery, setConnectSearchQuery] = useState('');
+  const [connectSearchResults, setConnectSearchResults] = useState([]);
+  const [connectSearching, setConnectSearching] = useState(false);
+  const [selectedConnectPlayer, setSelectedConnectPlayer] = useState(null);
+  const [connectData, setConnectData] = useState({
+    espn_id: '',
+    photo_url: '',
+    height: '',
+    weight: '',
+    hometown: '',
+    state: ''
+  });
+  const [connectSaving, setConnectSaving] = useState(false);
+
   const [outcomeData, setOutcomeData] = useState({
     status: '',
     outcome_date: '',
@@ -91,14 +142,14 @@ function PlayerDetail() {
       const playerData = response.data.data;
       setPlayer(playerData);
 
-      // Initialize outcome data from player and outcome
+      // Initialize outcome data from player and outcome (merge both sources)
       const currentOutcome = playerData.outcome || {};
       setOutcomeData({
         status: currentOutcome.status || playerData.status || 'Active',
         outcome_date: currentOutcome.outcome_date || '',
-        draft_round: currentOutcome.draft_round || '',
+        draft_round: currentOutcome.draft_round ?? playerData.draft_round ?? '',
         draft_pick: currentOutcome.draft_pick || '',
-        draft_year: currentOutcome.draft_year || '',
+        draft_year: currentOutcome.draft_year ?? playerData.draft_year ?? '',
         signed_team: currentOutcome.signed_team || '',
         notes: currentOutcome.notes || ''
       });
@@ -204,18 +255,423 @@ function PlayerDetail() {
   };
 
   const handleCancelStatusEdit = () => {
-    // Reset to current player data
+    // Reset to current player data (merge both sources)
     const currentOutcome = player.outcome || {};
     setOutcomeData({
       status: currentOutcome.status || player.status || 'Active',
       outcome_date: currentOutcome.outcome_date || '',
-      draft_round: currentOutcome.draft_round || '',
+      draft_round: currentOutcome.draft_round ?? player.draft_round ?? '',
       draft_pick: currentOutcome.draft_pick || '',
-      draft_year: currentOutcome.draft_year || '',
+      draft_year: currentOutcome.draft_year ?? player.draft_year ?? '',
       signed_team: currentOutcome.signed_team || '',
       notes: currentOutcome.notes || ''
     });
     setEditingStatus(false);
+  };
+
+  // Search ESPN for college player (for upgrade modal)
+  const handleUpgradeSearch = async (e) => {
+    e.preventDefault();
+    if (!upgradeSearchQuery.trim()) return;
+
+    setUpgradeSearching(true);
+    try {
+      const response = await axios.get('/api/players/search-espn', {
+        params: { name: upgradeSearchQuery }
+      });
+      setUpgradeSearchResults(response.data.data || []);
+    } catch (error) {
+      console.error('Error searching ESPN:', error);
+      alert('Error searching ESPN. Please try again.');
+    } finally {
+      setUpgradeSearching(false);
+    }
+  };
+
+  // Select a player from ESPN search results (for upgrade)
+  const selectUpgradePlayer = async (espnPlayer) => {
+    try {
+      const espnId = espnPlayer.id || espnPlayer.url?.match(/\/id\/(\d+)\//)?.[1];
+
+      if (!espnId) {
+        // Use basic data if no ESPN ID
+        setUpgradeData({
+          ...upgradeData,
+          photo_url: espnPlayer.image || ''
+        });
+        setSelectedUpgradePlayer(espnPlayer);
+        setUpgradeSearchResults([]);
+        return;
+      }
+
+      // Fetch detailed ESPN player data
+      const detailsResponse = await axios.get(`/api/players/espn-details/${espnId}`);
+      const details = detailsResponse.data.data;
+
+      setUpgradeData({
+        ...upgradeData,
+        school: details.school || espnPlayer.school || upgradeData.school,
+        conference: details.conference || upgradeData.conference,
+        class_year: details.class_year || upgradeData.class_year,
+        espn_id: espnId,
+        photo_url: details.photo_url || espnPlayer.image || '',
+        height: details.height || '',
+        weight: details.weight || ''
+      });
+
+      setSelectedUpgradePlayer({ ...espnPlayer, ...details });
+      setUpgradeSearchResults([]);
+      setUpgradeSearchQuery('');
+    } catch (error) {
+      console.error('Error fetching ESPN player details:', error);
+      // Fall back to basic data
+      setUpgradeData({
+        ...upgradeData,
+        photo_url: espnPlayer.image || ''
+      });
+      setSelectedUpgradePlayer(espnPlayer);
+      setUpgradeSearchResults([]);
+    }
+  };
+
+  // Clear ESPN selection in upgrade modal
+  const clearUpgradeSelection = () => {
+    setSelectedUpgradePlayer(null);
+    setUpgradeData({
+      ...upgradeData,
+      espn_id: '',
+      photo_url: '',
+      height: '',
+      weight: ''
+    });
+  };
+
+  // Upgrade high school player to college
+  const handleUpgradeToCollege = async (e) => {
+    e.preventDefault();
+    try {
+      await axios.put(`/api/players/${id}`, {
+        player_type: 'college',
+        school: upgradeData.school,
+        conference: upgradeData.conference,
+        class_year: upgradeData.class_year,
+        espn_id: upgradeData.espn_id || null,
+        photo_url: upgradeData.photo_url || null,
+        height: upgradeData.height || player.height,
+        weight: upgradeData.weight || player.weight,
+        // Keep high school info intact
+        high_school: player.high_school || player.name,
+        recruiting_class_year: player.recruiting_cycle_year
+      });
+
+      setShowUpgradeModal(false);
+      setSelectedUpgradePlayer(null);
+      setUpgradeSearchQuery('');
+      setUpgradeSearchResults([]);
+      fetchPlayerDetails();
+      alert('Player upgraded to college successfully!');
+    } catch (error) {
+      console.error('Error upgrading player:', error);
+      alert('Error upgrading player: ' + (error.response?.data?.message || error.message));
+    }
+  };
+
+  // Search ESPN NFL for veteran upgrade
+  const handleVeteranSearch = async (e) => {
+    e.preventDefault();
+    if (!veteranSearchQuery.trim()) return;
+
+    setVeteranSearching(true);
+    try {
+      const response = await axios.get('/api/players/search-nfl', {
+        params: { name: veteranSearchQuery }
+      });
+      setVeteranSearchResults(response.data.data || []);
+    } catch (error) {
+      console.error('Error searching NFL:', error);
+      alert('Error searching NFL players. Please try again.');
+    } finally {
+      setVeteranSearching(false);
+    }
+  };
+
+  // Select NFL player from search results (for veteran upgrade)
+  const selectVeteranPlayer = async (nflPlayer) => {
+    try {
+      const espnId = nflPlayer.id || nflPlayer.url?.match(/\/id\/(\d+)\//)?.[1];
+
+      if (!espnId) {
+        setVeteranUpgradeData({
+          ...veteranUpgradeData,
+          nfl_team: nflPlayer.team || '',
+          photo_url: nflPlayer.image || ''
+        });
+        setSelectedVeteranPlayer(nflPlayer);
+        setVeteranSearchResults([]);
+        return;
+      }
+
+      // Fetch detailed NFL player data
+      const detailsResponse = await axios.get(`/api/players/nfl-details/${espnId}`);
+      const details = detailsResponse.data.data;
+
+      setVeteranUpgradeData({
+        ...veteranUpgradeData,
+        nfl_team: details.team || nflPlayer.team || '',
+        years_pro: details.experience || 1,
+        espn_id: espnId,
+        photo_url: details.photo_url || nflPlayer.image || '',
+        height: details.height || '',
+        weight: details.weight ? details.weight.replace(' lbs', '') : ''
+      });
+
+      setSelectedVeteranPlayer({ ...nflPlayer, ...details });
+      setVeteranSearchResults([]);
+      setVeteranSearchQuery('');
+    } catch (error) {
+      console.error('Error fetching NFL player details:', error);
+      setVeteranUpgradeData({
+        ...veteranUpgradeData,
+        nfl_team: nflPlayer.team || '',
+        photo_url: nflPlayer.image || ''
+      });
+      setSelectedVeteranPlayer(nflPlayer);
+      setVeteranSearchResults([]);
+    }
+  };
+
+  // Clear veteran selection
+  const clearVeteranSelection = () => {
+    setSelectedVeteranPlayer(null);
+    setVeteranUpgradeData({
+      nfl_team: '',
+      years_pro: 1,
+      espn_id: '',
+      photo_url: '',
+      height: '',
+      weight: ''
+    });
+  };
+
+  // Upgrade college player to veteran
+  const handleUpgradeToVeteran = async (e) => {
+    e.preventDefault();
+    try {
+      await axios.put(`/api/players/${id}`, {
+        player_type: 'veteran',
+        nfl_team: veteranUpgradeData.nfl_team,
+        years_pro: veteranUpgradeData.years_pro,
+        espn_id: veteranUpgradeData.espn_id || null,
+        photo_url: veteranUpgradeData.photo_url || player.photo_url,
+        height: veteranUpgradeData.height || player.height,
+        weight: veteranUpgradeData.weight || player.weight,
+        // Keep college info as school
+        school: player.school,
+        conference: player.conference
+      });
+
+      setShowVeteranModal(false);
+      setSelectedVeteranPlayer(null);
+      setVeteranSearchQuery('');
+      setVeteranSearchResults([]);
+      fetchPlayerDetails();
+      alert('Player upgraded to NFL veteran successfully!');
+    } catch (error) {
+      console.error('Error upgrading player:', error);
+      alert('Error upgrading player: ' + (error.response?.data?.message || error.message));
+    }
+  };
+
+  // Connect to ESPN/CFBD - search handler
+  const handleConnectSearch = async (e) => {
+    e.preventDefault();
+    if (!connectSearchQuery.trim()) return;
+
+    setConnectSearching(true);
+    try {
+      // Use appropriate search based on player type
+      const endpoint = player.player_type === 'veteran'
+        ? '/api/players/search-nfl'
+        : '/api/players/search-espn';
+
+      const response = await axios.get(endpoint, {
+        params: { name: connectSearchQuery }
+      });
+      setConnectSearchResults(response.data.data || []);
+    } catch (error) {
+      console.error('Error searching:', error);
+      alert('Error searching. Please try again.');
+    } finally {
+      setConnectSearching(false);
+    }
+  };
+
+  // Select a player from Connect search results
+  const selectConnectPlayer = async (espnPlayer) => {
+    try {
+      const espnId = espnPlayer.id || espnPlayer.url?.match(/\/id\/(\d+)\//)?.[1];
+
+      // Start with photo from ESPN search result
+      let photoUrl = espnPlayer.image || '';
+      let height = '';
+      let weight = '';
+      let hometown = '';
+      let state = '';
+
+      // For college players, use CFBD to get height, weight, hometown
+      if (player.player_type !== 'veteran') {
+        // Try CFBD player search for height/weight
+        try {
+          const cfbdResponse = await axios.get('/api/players/search-cfbd', {
+            params: { name: player.name }
+          });
+
+          if (cfbdResponse.data.data && cfbdResponse.data.data.length > 0) {
+            const cfbdPlayers = cfbdResponse.data.data;
+            const exactMatch = cfbdPlayers.find(p =>
+              p.name?.toLowerCase() === player.name?.toLowerCase()
+            );
+            const cfbdPlayer = exactMatch || cfbdPlayers[0];
+
+            // CFBD returns height in inches, convert to feet'inches" format
+            if (cfbdPlayer.height) {
+              const feet = Math.floor(cfbdPlayer.height / 12);
+              const inches = cfbdPlayer.height % 12;
+              height = `${feet}'${inches}"`;
+            }
+            weight = cfbdPlayer.weight ? String(cfbdPlayer.weight) : '';
+            // CFBD player search may have hometown
+            hometown = cfbdPlayer.hometown || '';
+            state = cfbdPlayer.state || '';
+          }
+        } catch (cfbdError) {
+          console.warn('CFBD player search failed:', cfbdError.message);
+        }
+
+        // Always try recruiting data for hometown (more reliable source)
+        if (!hometown || !state) {
+          try {
+            const recruitingResponse = await axios.get('/api/players/recruiting-data', {
+              params: { name: player.name, team: player.school }
+            });
+
+            if (recruitingResponse.data.data && recruitingResponse.data.data.length > 0) {
+              const recruit = recruitingResponse.data.data[0];
+              // Use recruiting data for hometown/state if not already set
+              if (!hometown) hometown = recruit.hometown || '';
+              if (!state) state = recruit.state || '';
+              // Also use height/weight from recruiting if not already set
+              if (!height && recruit.height) {
+                const feet = Math.floor(recruit.height / 12);
+                const inches = recruit.height % 12;
+                height = `${feet}'${inches}"`;
+              }
+              if (!weight) weight = recruit.weight ? String(recruit.weight) : '';
+            }
+          } catch (recruitError) {
+            console.warn('Recruiting data failed:', recruitError.message);
+          }
+        }
+      } else {
+        // For veterans, try ESPN NFL details
+        try {
+          if (espnId) {
+            const nflResponse = await axios.get(`/api/players/nfl-details/${espnId}`);
+            const details = nflResponse.data.data;
+            if (details) {
+              photoUrl = details.photo_url || photoUrl;
+              height = details.height || details.displayHeight || '';
+              weight = details.weight ? String(details.weight).replace(' lbs', '') : '';
+              if (details.birthPlace) {
+                const parts = details.birthPlace.split(',');
+                hometown = parts[0]?.trim() || '';
+                state = parts[1]?.trim() || '';
+              }
+            }
+          }
+        } catch (nflError) {
+          console.warn('NFL details failed:', nflError.message);
+        }
+      }
+
+      setConnectData({
+        espn_id: espnId || '',
+        photo_url: photoUrl,
+        height: height,
+        weight: weight,
+        hometown: hometown,
+        state: state
+      });
+
+      setSelectedConnectPlayer(espnPlayer);
+      setConnectSearchResults([]);
+      setConnectSearchQuery('');
+    } catch (error) {
+      console.error('Error fetching player details:', error);
+      // Fall back to basic data with just photo
+      setConnectData({
+        espn_id: espnPlayer.id || '',
+        photo_url: espnPlayer.image || '',
+        height: '',
+        weight: '',
+        hometown: '',
+        state: ''
+      });
+      setSelectedConnectPlayer(espnPlayer);
+      setConnectSearchResults([]);
+    }
+  };
+
+  // Clear Connect selection
+  const clearConnectSelection = () => {
+    setSelectedConnectPlayer(null);
+    setConnectData({
+      espn_id: '',
+      photo_url: '',
+      height: '',
+      weight: '',
+      hometown: '',
+      state: ''
+    });
+  };
+
+  // Save Connect to ESPN data - ONLY updates specific fields, NOT class_year
+  const handleSaveConnect = async (e) => {
+    e.preventDefault();
+    setConnectSaving(true);
+
+    try {
+      // Only send the fields we want to update - explicitly NOT class_year
+      await axios.put(`/api/players/${id}`, {
+        espn_id: connectData.espn_id || null,
+        photo_url: connectData.photo_url || null,
+        height: connectData.height || null,
+        weight: connectData.weight || null,
+        hometown: connectData.hometown || null,
+        state: connectData.state || null
+        // NOTE: class_year, school, conference, status, draft info are NOT included
+      });
+
+      setShowConnectModal(false);
+      setSelectedConnectPlayer(null);
+      setConnectSearchQuery('');
+      setConnectSearchResults([]);
+      setConnectData({
+        espn_id: '',
+        photo_url: '',
+        height: '',
+        weight: '',
+        hometown: '',
+        state: ''
+      });
+      fetchPlayerDetails();
+      alert('Player connected to ESPN successfully!');
+    } catch (error) {
+      console.error('Error connecting player:', error);
+      alert('Error connecting player: ' + (error.response?.data?.message || error.message));
+    } finally {
+      setConnectSaving(false);
+    }
   };
 
   if (loading) {
@@ -232,9 +688,36 @@ function PlayerDetail() {
         <button onClick={() => navigate('/players')} className="btn btn-secondary">
           ← Back to Players
         </button>
-        <button onClick={() => navigate(`/players/${id}/edit`)} className="btn btn-primary">
-          Edit Player
-        </button>
+        <div className="header-actions">
+          {/* Connect to ESPN button - only show if espn_id is not set */}
+          {!player.espn_id && (
+            <button onClick={() => {
+              setConnectSearchQuery(player.name);
+              setShowConnectModal(true);
+            }} className="btn btn-info">
+              Connect to ESPN
+            </button>
+          )}
+          {player.player_type === 'high_school' && (
+            <button onClick={() => {
+              setUpgradeSearchQuery(player.name);
+              setShowUpgradeModal(true);
+            }} className="btn btn-success">
+              Upgrade to College
+            </button>
+          )}
+          {player.player_type === 'college' && (
+            <button onClick={() => {
+              setVeteranSearchQuery(player.name);
+              setShowVeteranModal(true);
+            }} className="btn btn-success veteran-upgrade">
+              Upgrade to Veteran
+            </button>
+          )}
+          <button onClick={() => navigate(`/players/${id}/edit`)} className="btn btn-primary">
+            Edit Player
+          </button>
+        </div>
       </div>
 
       <div className="player-info-card">
@@ -243,18 +726,39 @@ function PlayerDetail() {
             <img src={player.photo_url} alt={player.name} className="player-photo" />
           )}
           <div className="player-title">
-            <h1>{player.name}</h1>
+            <div className="player-name-row">
+              <h1>{player.name}</h1>
+              {player.player_type && player.player_type !== 'college' && (
+                <span className={`player-type-badge ${player.player_type}`}>
+                  {player.player_type === 'high_school' ? 'High School' : 'NFL Veteran'}
+                </span>
+              )}
+            </div>
             <p className="player-subtitle">
               {player.position} •{' '}
-              {schoolData?.logo && (
-                <img
-                  src={schoolData.logo}
-                  alt={player.school}
-                  className="school-logo-inline"
-                  style={{ width: '20px', height: '20px', verticalAlign: 'middle', marginRight: '5px' }}
-                />
+              {player.player_type === 'high_school' ? (
+                <>
+                  {player.high_school || 'High School'}{player.state ? `, ${player.state}` : ''}
+                  {player.recruiting_cycle_year && ` (Class of ${player.recruiting_cycle_year})`}
+                </>
+              ) : player.player_type === 'veteran' ? (
+                <>
+                  {player.nfl_team || 'NFL'}
+                  {player.school && ` (${player.school})`}
+                </>
+              ) : (
+                <>
+                  {schoolData?.logo && (
+                    <img
+                      src={schoolData.logo}
+                      alt={player.school}
+                      className="school-logo-inline"
+                      style={{ width: '20px', height: '20px', verticalAlign: 'middle', marginRight: '5px' }}
+                    />
+                  )}
+                  {player.school} ({player.conference})
+                </>
               )}
-              {player.school} ({player.conference})
             </p>
           </div>
         </div>
@@ -262,7 +766,11 @@ function PlayerDetail() {
         <div className="player-stats-grid">
           <div className="stat-item">
             <label>Class</label>
-            <span>{player.class_year}</span>
+            <span>
+              {player.player_type === 'high_school'
+                ? (player.recruiting_cycle_year || '-')
+                : (player.class_year || '-')}
+            </span>
           </div>
           <div className="stat-item">
             <label>Hometown</label>
@@ -299,10 +807,17 @@ function PlayerDetail() {
               )}
             </div>
           </div>
-          {player.outcome?.draft_round && (
+          {(player.outcome?.draft_round !== undefined || player.draft_round !== undefined) && (
             <div className="stat-item">
               <label>Draft</label>
-              <span>Round {player.outcome.draft_round}</span>
+              <span>
+                {(() => {
+                  const draftRound = player.outcome?.draft_round ?? player.draft_round;
+                  if (draftRound === 0) return 'UDFA';
+                  if (draftRound) return `Round ${draftRound}`;
+                  return '-';
+                })()}
+              </span>
             </div>
           )}
         </div>
@@ -336,10 +851,8 @@ function PlayerDetail() {
                 >
                   <option value="Active">Active</option>
                   <option value="Signed">Signed</option>
-                  <option value="Missed">Missed</option>
-                  <option value="Walked Away">Walked Away</option>
+                  <option value="Not Signed">Not Signed</option>
                   <option value="Returned to School">Returned to School</option>
-                  <option value="No Meeting">No Meeting</option>
                 </select>
               </div>
 
@@ -353,56 +866,61 @@ function PlayerDetail() {
               </div>
             </div>
 
+            {/* Draft/Team fields - always visible */}
+            <div className="form-row">
+              <div className="form-group">
+                <label>Draft Round</label>
+                <select
+                  value={outcomeData.draft_round}
+                  onChange={(e) => setOutcomeData({ ...outcomeData, draft_round: e.target.value })}
+                >
+                  <option value="">Not Drafted / Unknown</option>
+                  <option value="0">UDFA (Undrafted Free Agent)</option>
+                  <option value="1">Round 1</option>
+                  <option value="2">Round 2</option>
+                  <option value="3">Round 3</option>
+                  <option value="4">Round 4</option>
+                  <option value="5">Round 5</option>
+                  <option value="6">Round 6</option>
+                  <option value="7">Round 7</option>
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label>Draft Year</label>
+                <input
+                  type="number"
+                  value={outcomeData.draft_year}
+                  onChange={(e) => setOutcomeData({ ...outcomeData, draft_year: e.target.value })}
+                  placeholder="e.g., 2025"
+                />
+              </div>
+            </div>
+
             {outcomeData.status === 'Signed' && (
-              <>
-                <div className="form-row">
-                  <div className="form-group">
-                    <label>Signed Team</label>
-                    <input
-                      type="text"
-                      value={outcomeData.signed_team}
-                      onChange={(e) => setOutcomeData({ ...outcomeData, signed_team: e.target.value })}
-                      placeholder="Team name..."
-                    />
-                  </div>
-
-                  <div className="form-group">
-                    <label>Draft Year</label>
-                    <input
-                      type="number"
-                      value={outcomeData.draft_year}
-                      onChange={(e) => setOutcomeData({ ...outcomeData, draft_year: e.target.value })}
-                      placeholder="e.g., 2025"
-                    />
-                  </div>
+              <div className="form-row">
+                <div className="form-group">
+                  <label>Signed Team</label>
+                  <input
+                    type="text"
+                    value={outcomeData.signed_team}
+                    onChange={(e) => setOutcomeData({ ...outcomeData, signed_team: e.target.value })}
+                    placeholder="Team name..."
+                  />
                 </div>
 
-                <div className="form-row">
-                  <div className="form-group">
-                    <label>Draft Round</label>
-                    <input
-                      type="number"
-                      min="1"
-                      max="7"
-                      value={outcomeData.draft_round}
-                      onChange={(e) => setOutcomeData({ ...outcomeData, draft_round: e.target.value })}
-                      placeholder="1-7"
-                    />
-                  </div>
-
-                  <div className="form-group">
-                    <label>Draft Pick</label>
-                    <input
-                      type="number"
-                      min="1"
-                      max="262"
-                      value={outcomeData.draft_pick}
-                      onChange={(e) => setOutcomeData({ ...outcomeData, draft_pick: e.target.value })}
-                      placeholder="Overall pick #"
-                    />
-                  </div>
+                <div className="form-group">
+                  <label>Draft Pick</label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="262"
+                    value={outcomeData.draft_pick}
+                    onChange={(e) => setOutcomeData({ ...outcomeData, draft_pick: e.target.value })}
+                    placeholder="Overall pick #"
+                  />
                 </div>
-              </>
+              </div>
             )}
 
             <div className="form-group">
@@ -428,6 +946,468 @@ function PlayerDetail() {
               </button>
             </div>
           </form>
+        </div>
+      )}
+
+      {/* Upgrade to College Modal */}
+      {showUpgradeModal && (
+        <div className="modal-overlay">
+          <div className="modal-content upgrade-modal">
+            <h2>Upgrade to College Player</h2>
+            <p className="modal-description">
+              {player.name} is currently a high school player. Search ESPN to find their college profile for updated info.
+            </p>
+
+            {/* ESPN Search Section */}
+            <div className="espn-search-section upgrade-search">
+              <h4>Search ESPN for {player.name}</h4>
+              <form onSubmit={handleUpgradeSearch} className="search-form">
+                <input
+                  type="text"
+                  placeholder={`Search "${player.name}" on ESPN...`}
+                  value={upgradeSearchQuery}
+                  onChange={(e) => setUpgradeSearchQuery(e.target.value)}
+                  className="search-input"
+                />
+                <button type="submit" className="btn btn-primary" disabled={upgradeSearching || !upgradeSearchQuery.trim()}>
+                  {upgradeSearching ? 'Searching...' : 'Search'}
+                </button>
+              </form>
+
+              {upgradeSearchResults.length > 0 && (
+                <div className="search-results">
+                  <h5>Results ({upgradeSearchResults.length})</h5>
+                  <div className="results-grid compact">
+                    {upgradeSearchResults.map((espnPlayer, index) => (
+                      <div key={index} onClick={() => selectUpgradePlayer(espnPlayer)} className="search-result-card">
+                        {espnPlayer.image && (
+                          <img src={espnPlayer.image} alt={espnPlayer.name} className="player-image" />
+                        )}
+                        <div className="player-info">
+                          <div className="player-name">{espnPlayer.name}</div>
+                          <div className="player-details">{espnPlayer.position} • {espnPlayer.school}</div>
+                        </div>
+                        <button className="btn btn-sm btn-primary" style={{ pointerEvents: 'none' }}>Select</button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Selected ESPN Player Preview */}
+            {selectedUpgradePlayer && (
+              <div className="selected-player-preview">
+                <div className="preview-content">
+                  {upgradeData.photo_url && (
+                    <img src={upgradeData.photo_url} alt={selectedUpgradePlayer.name} className="preview-image" />
+                  )}
+                  <div className="preview-info">
+                    <div className="preview-badge">✓ Linked to ESPN</div>
+                    <div className="preview-name">{selectedUpgradePlayer.name}</div>
+                    <div className="preview-details">
+                      {selectedUpgradePlayer.position} • {upgradeData.school || selectedUpgradePlayer.school}
+                      {upgradeData.height && ` • ${upgradeData.height}`}
+                      {upgradeData.weight && ` • ${upgradeData.weight} lbs`}
+                    </div>
+                  </div>
+                  <button type="button" onClick={clearUpgradeSelection} className="btn btn-secondary btn-sm">
+                    Clear
+                  </button>
+                </div>
+              </div>
+            )}
+
+            <form onSubmit={handleUpgradeToCollege}>
+              <div className="form-group">
+                <label>College/University *</label>
+                <SchoolAutocomplete
+                  value={upgradeData.school}
+                  onChange={(school, conference) => {
+                    setUpgradeData({ ...upgradeData, school, conference });
+                  }}
+                  required
+                />
+              </div>
+
+              <div className="form-row">
+                <div className="form-group">
+                  <label>Conference</label>
+                  <input
+                    type="text"
+                    value={upgradeData.conference}
+                    disabled
+                    className="disabled-input"
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>Class Year *</label>
+                  <select
+                    value={upgradeData.class_year}
+                    onChange={(e) => setUpgradeData({ ...upgradeData, class_year: e.target.value })}
+                    required
+                  >
+                    <option value="Freshman">Freshman</option>
+                    <option value="Sophomore">Sophomore</option>
+                    <option value="Junior">Junior</option>
+                    <option value="Senior">Senior</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Show height/weight if fetched from ESPN */}
+              {(upgradeData.height || upgradeData.weight) && (
+                <div className="form-row">
+                  <div className="form-group">
+                    <label>Height (from ESPN)</label>
+                    <input
+                      type="text"
+                      value={upgradeData.height}
+                      onChange={(e) => setUpgradeData({ ...upgradeData, height: e.target.value })}
+                      placeholder="e.g., 6'2&quot;"
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Weight (from ESPN)</label>
+                    <input
+                      type="text"
+                      value={upgradeData.weight}
+                      onChange={(e) => setUpgradeData({ ...upgradeData, weight: e.target.value })}
+                      placeholder="e.g., 220"
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div className="form-actions">
+                <button type="submit" className="btn btn-success">
+                  Upgrade to College
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowUpgradeModal(false);
+                    setSelectedUpgradePlayer(null);
+                    setUpgradeSearchQuery('');
+                    setUpgradeSearchResults([]);
+                  }}
+                  className="btn btn-secondary"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Upgrade to Veteran Modal */}
+      {showVeteranModal && (
+        <div className="modal-overlay">
+          <div className="modal-content upgrade-modal veteran-modal">
+            <h2>Upgrade to NFL Veteran</h2>
+            <p className="modal-description">
+              {player.name} is moving to the NFL. Search ESPN to find their NFL profile.
+            </p>
+
+            {/* NFL Search Section */}
+            <div className="espn-search-section veteran-search">
+              <h4>Search ESPN NFL for {player.name}</h4>
+              <form onSubmit={handleVeteranSearch} className="search-form">
+                <input
+                  type="text"
+                  placeholder={`Search "${player.name}" on ESPN NFL...`}
+                  value={veteranSearchQuery}
+                  onChange={(e) => setVeteranSearchQuery(e.target.value)}
+                  className="search-input"
+                />
+                <button type="submit" className="btn btn-primary" disabled={veteranSearching || !veteranSearchQuery.trim()}>
+                  {veteranSearching ? 'Searching...' : 'Search'}
+                </button>
+              </form>
+
+              {veteranSearchResults.length > 0 && (
+                <div className="search-results">
+                  <h5>Results ({veteranSearchResults.length})</h5>
+                  <div className="results-grid compact">
+                    {veteranSearchResults.map((nflPlayer, index) => (
+                      <div key={index} onClick={() => selectVeteranPlayer(nflPlayer)} className="search-result-card">
+                        {nflPlayer.image && (
+                          <img src={nflPlayer.image} alt={nflPlayer.name} className="player-image" />
+                        )}
+                        <div className="player-info">
+                          <div className="player-name">{nflPlayer.name}</div>
+                          <div className="player-details">{nflPlayer.position} • {nflPlayer.team}</div>
+                        </div>
+                        <button className="btn btn-sm btn-primary" style={{ pointerEvents: 'none' }}>Select</button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Selected NFL Player Preview */}
+            {selectedVeteranPlayer && (
+              <div className="selected-player-preview nfl-preview">
+                <div className="preview-content">
+                  {veteranUpgradeData.photo_url && (
+                    <img src={veteranUpgradeData.photo_url} alt={selectedVeteranPlayer.name} className="preview-image" />
+                  )}
+                  <div className="preview-info">
+                    <div className="preview-badge nfl-badge">✓ Linked to ESPN NFL</div>
+                    <div className="preview-name">{selectedVeteranPlayer.name}</div>
+                    <div className="preview-details">
+                      {selectedVeteranPlayer.position} • {veteranUpgradeData.nfl_team}
+                      {veteranUpgradeData.years_pro && ` • ${veteranUpgradeData.years_pro} yr${veteranUpgradeData.years_pro > 1 ? 's' : ''} pro`}
+                    </div>
+                  </div>
+                  <button type="button" onClick={clearVeteranSelection} className="btn btn-secondary btn-sm">
+                    Clear
+                  </button>
+                </div>
+              </div>
+            )}
+
+            <form onSubmit={handleUpgradeToVeteran}>
+              <div className="form-row">
+                <div className="form-group">
+                  <label>NFL Team *</label>
+                  <input
+                    type="text"
+                    value={veteranUpgradeData.nfl_team}
+                    onChange={(e) => setVeteranUpgradeData({ ...veteranUpgradeData, nfl_team: e.target.value })}
+                    placeholder="e.g., Kansas City Chiefs"
+                    required
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>Years Pro</label>
+                  <input
+                    type="number"
+                    value={veteranUpgradeData.years_pro}
+                    onChange={(e) => setVeteranUpgradeData({ ...veteranUpgradeData, years_pro: parseInt(e.target.value) || 1 })}
+                    min="1"
+                  />
+                </div>
+              </div>
+
+              {/* Show height/weight if fetched from ESPN */}
+              {(veteranUpgradeData.height || veteranUpgradeData.weight) && (
+                <div className="form-row">
+                  <div className="form-group">
+                    <label>Height (from ESPN)</label>
+                    <input
+                      type="text"
+                      value={veteranUpgradeData.height}
+                      onChange={(e) => setVeteranUpgradeData({ ...veteranUpgradeData, height: e.target.value })}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Weight (from ESPN)</label>
+                    <input
+                      type="text"
+                      value={veteranUpgradeData.weight}
+                      onChange={(e) => setVeteranUpgradeData({ ...veteranUpgradeData, weight: e.target.value })}
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div className="form-actions">
+                <button type="submit" className="btn btn-success">
+                  Upgrade to Veteran
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowVeteranModal(false);
+                    setSelectedVeteranPlayer(null);
+                    setVeteranSearchQuery('');
+                    setVeteranSearchResults([]);
+                  }}
+                  className="btn btn-secondary"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Connect to ESPN Modal */}
+      {showConnectModal && (
+        <div className="modal-overlay">
+          <div className="modal-content upgrade-modal connect-modal">
+            <h2>Connect to ESPN</h2>
+            <p className="modal-description">
+              Search ESPN to fetch photo, height, weight, and hometown for {player.name}.
+              <br />
+              <strong>Note:</strong> This will NOT overwrite class year, school, or other imported data.
+            </p>
+
+            {/* ESPN Search Section */}
+            <div className="espn-search-section connect-search">
+              <h4>Search {player.player_type === 'veteran' ? 'ESPN NFL' : 'ESPN'} for {player.name}</h4>
+              <form onSubmit={handleConnectSearch} className="search-form">
+                <input
+                  type="text"
+                  placeholder={`Search "${player.name}"...`}
+                  value={connectSearchQuery}
+                  onChange={(e) => setConnectSearchQuery(e.target.value)}
+                  className="search-input"
+                />
+                <button type="submit" className="btn btn-primary" disabled={connectSearching || !connectSearchQuery.trim()}>
+                  {connectSearching ? 'Searching...' : 'Search'}
+                </button>
+              </form>
+
+              {connectSearchResults.length > 0 && (
+                <div className="search-results">
+                  <h5>Results ({connectSearchResults.length})</h5>
+                  <div className="results-grid compact">
+                    {connectSearchResults.map((espnPlayer, index) => (
+                      <div key={index} onClick={() => selectConnectPlayer(espnPlayer)} className="search-result-card">
+                        {espnPlayer.image && (
+                          <img src={espnPlayer.image} alt={espnPlayer.name} className="player-image" />
+                        )}
+                        <div className="player-info">
+                          <div className="player-name">{espnPlayer.name}</div>
+                          <div className="player-details">
+                            {espnPlayer.position} • {espnPlayer.school || espnPlayer.team}
+                          </div>
+                        </div>
+                        <button className="btn btn-sm btn-primary" style={{ pointerEvents: 'none' }}>Select</button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Selected Player Preview */}
+            {selectedConnectPlayer && (
+              <div className="selected-player-preview connect-preview">
+                <div className="preview-content">
+                  {connectData.photo_url && (
+                    <img src={connectData.photo_url} alt={selectedConnectPlayer.name} className="preview-image" />
+                  )}
+                  <div className="preview-info">
+                    <div className="preview-badge">✓ Found on ESPN</div>
+                    <div className="preview-name">{selectedConnectPlayer.name}</div>
+                    <div className="preview-details">
+                      {connectData.height && `${connectData.height}`}
+                      {connectData.weight && ` • ${connectData.weight} lbs`}
+                      {connectData.hometown && ` • ${connectData.hometown}`}
+                      {connectData.state && `, ${connectData.state}`}
+                    </div>
+                  </div>
+                  <button type="button" onClick={clearConnectSelection} className="btn btn-secondary btn-sm">
+                    Clear
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Data to be saved */}
+            {selectedConnectPlayer && (
+              <form onSubmit={handleSaveConnect}>
+                <div className="connect-data-preview">
+                  <h4>Data to Import</h4>
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Photo URL</label>
+                      <input
+                        type="text"
+                        value={connectData.photo_url}
+                        onChange={(e) => setConnectData({ ...connectData, photo_url: e.target.value })}
+                        placeholder="Photo URL"
+                      />
+                    </div>
+                  </div>
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Height</label>
+                      <input
+                        type="text"
+                        value={connectData.height}
+                        onChange={(e) => setConnectData({ ...connectData, height: e.target.value })}
+                        placeholder="e.g., 6'2&quot;"
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Weight</label>
+                      <input
+                        type="text"
+                        value={connectData.weight}
+                        onChange={(e) => setConnectData({ ...connectData, weight: e.target.value })}
+                        placeholder="e.g., 220"
+                      />
+                    </div>
+                  </div>
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Hometown</label>
+                      <input
+                        type="text"
+                        value={connectData.hometown}
+                        onChange={(e) => setConnectData({ ...connectData, hometown: e.target.value })}
+                        placeholder="City"
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>State</label>
+                      <input
+                        type="text"
+                        value={connectData.state}
+                        onChange={(e) => setConnectData({ ...connectData, state: e.target.value })}
+                        placeholder="State"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="form-actions">
+                  <button type="submit" className="btn btn-primary" disabled={connectSaving}>
+                    {connectSaving ? 'Saving...' : 'Save ESPN Data'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowConnectModal(false);
+                      setSelectedConnectPlayer(null);
+                      setConnectSearchQuery('');
+                      setConnectSearchResults([]);
+                      clearConnectSelection();
+                    }}
+                    className="btn btn-secondary"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            )}
+
+            {/* Cancel button when no player selected */}
+            {!selectedConnectPlayer && (
+              <div className="form-actions">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowConnectModal(false);
+                    setConnectSearchQuery('');
+                    setConnectSearchResults([]);
+                  }}
+                  className="btn btn-secondary"
+                >
+                  Cancel
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       )}
 

@@ -1,0 +1,396 @@
+.import-players {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.import-players .page-header {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.import-players h1 {
+  margin: 0;
+  color: #333;
+}
+
+.import-container {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  padding: 2rem;
+}
+
+/* Upload Section */
+.upload-section {
+  text-align: center;
+  padding: 2rem;
+  border: 2px dashed #ddd;
+  border-radius: 12px;
+  margin-bottom: 2rem;
+}
+
+.upload-section h2 {
+  margin-top: 0;
+  color: #333;
+}
+
+.upload-description {
+  color: #666;
+  margin-bottom: 1.5rem;
+}
+
+.file-input-wrapper {
+  margin-bottom: 1.5rem;
+}
+
+.file-input {
+  display: none;
+}
+
+.file-label {
+  display: inline-block;
+  padding: 1rem 2rem;
+  background: #f5f5f5;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: all 0.2s;
+}
+
+.file-label:hover {
+  background: #eee;
+  border-color: #ccc;
+}
+
+/* Error Message */
+.error-message {
+  background: #fdeaea;
+  border: 1px solid #f5c6cb;
+  color: #721c24;
+  padding: 1rem;
+  border-radius: 8px;
+  margin-bottom: 1.5rem;
+}
+
+/* Preview Section */
+.preview-section {
+  margin-top: 2rem;
+}
+
+.preview-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.preview-header h2 {
+  margin: 0;
+}
+
+.preview-actions {
+  display: flex;
+  gap: 1rem;
+}
+
+.preview-note {
+  color: #666;
+  font-size: 0.9rem;
+  margin-bottom: 1rem;
+}
+
+.preview-table-wrapper {
+  overflow-x: auto;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+}
+
+.preview-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.preview-table th,
+.preview-table td {
+  padding: 0.75rem 1rem;
+  text-align: left;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.preview-table th {
+  background: #f8f9fa;
+  font-weight: 600;
+  color: #333;
+  position: sticky;
+  top: 0;
+}
+
+.preview-table tr:hover {
+  background: #f5f5f5;
+}
+
+.preview-table tr.no-agent {
+  background: #fffbeb;
+}
+
+.name-cell {
+  font-weight: 500;
+}
+
+.type-badge {
+  display: inline-block;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.type-badge.college {
+  background: #e3f2fd;
+  color: #1565c0;
+}
+
+.type-badge.veteran {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+}
+
+.status-badge.signed {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.status-badge.not-signed {
+  background: #fff3e0;
+  color: #e65100;
+}
+
+.status-badge.returned-to-school {
+  background: #e3f2fd;
+  color: #1565c0;
+}
+
+.warning-badge {
+  margin-left: 0.5rem;
+  cursor: help;
+}
+
+.preview-legend {
+  margin-top: 1rem;
+  padding: 1rem;
+  background: #f8f9fa;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  color: #666;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Result Section */
+.result-section {
+  text-align: center;
+  padding: 2rem;
+}
+
+.result-section h2 {
+  color: #2e7d32;
+  margin-bottom: 2rem;
+}
+
+.result-stats {
+  display: flex;
+  justify-content: center;
+  gap: 2rem;
+  margin-bottom: 2rem;
+}
+
+.stat-card {
+  padding: 1.5rem 2rem;
+  border-radius: 12px;
+  min-width: 120px;
+}
+
+.stat-card.success {
+  background: #e8f5e9;
+  border: 1px solid #4caf50;
+}
+
+.stat-card.warning {
+  background: #fff3e0;
+  border: 1px solid #ff9800;
+}
+
+.stat-card.info {
+  background: #e3f2fd;
+  border: 1px solid #2196f3;
+}
+
+.stat-number {
+  display: block;
+  font-size: 2rem;
+  font-weight: 700;
+  color: #333;
+}
+
+.stat-label {
+  display: block;
+  font-size: 0.9rem;
+  color: #666;
+  margin-top: 0.25rem;
+}
+
+.errors-list {
+  text-align: left;
+  background: #fdeaea;
+  border: 1px solid #f5c6cb;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 2rem;
+}
+
+.errors-list h3 {
+  color: #721c24;
+  margin-top: 0;
+}
+
+.errors-list ul {
+  margin: 0;
+  padding-left: 1.5rem;
+  color: #721c24;
+}
+
+.result-actions {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+}
+
+/* Feature List */
+.feature-list {
+  text-align: left;
+  margin: 1rem auto;
+  max-width: 500px;
+  padding-left: 1.5rem;
+}
+
+.feature-list li {
+  margin-bottom: 0.5rem;
+  color: #555;
+}
+
+.feature-list strong {
+  color: #333;
+}
+
+.upload-note {
+  background: #e3f2fd;
+  border: 1px solid #2196f3;
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  margin: 1rem auto;
+  max-width: 500px;
+  font-size: 0.875rem;
+  color: #1565c0;
+}
+
+/* Preview Meta */
+.preview-meta {
+  color: #666;
+  font-size: 0.9rem;
+  margin-top: 0.25rem;
+}
+
+/* Draft Badge */
+.draft-badge {
+  display: inline-block;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: #f5f5f5;
+  color: #666;
+}
+
+.draft-badge.drafted {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+/* Materials Count */
+.materials-count {
+  display: inline-block;
+  font-size: 0.8rem;
+  color: #555;
+}
+
+.events-count {
+  display: block;
+  font-size: 0.7rem;
+  color: #888;
+}
+
+/* High School Badge */
+.type-badge.high_school {
+  background: #fff3e0;
+  color: #e65100;
+}
+
+/* Result Stats */
+.stat-card.primary {
+  background: #e3f2fd;
+  border: 1px solid #2196f3;
+}
+
+.result-filename {
+  color: #666;
+  margin-bottom: 1.5rem;
+}
+
+/* Photo Fetch Section */
+.photo-fetch-section {
+  background: #f8f9fa;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin: 2rem 0;
+  text-align: center;
+}
+
+.photo-fetch-section h3 {
+  margin-top: 0;
+  color: #333;
+}
+
+.photo-fetch-section p {
+  color: #666;
+  margin-bottom: 1rem;
+}
+
+.photo-result {
+  margin-top: 1rem;
+}
+
+.success-text {
+  color: #2e7d32;
+  font-weight: 600;
+}
+
+.muted-text {
+  color: #888;
+}

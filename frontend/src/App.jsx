@@ -14,6 +14,7 @@ import Materials from './pages/Materials';
 import Agents from './pages/Agents';
 import UserManagement from './pages/UserManagement';
 import Schools from './pages/Schools';
+import ImportPlayers from './pages/ImportPlayers';
 
 function App() {
   const [user, setUser] = useState(null);
@@ -93,6 +94,7 @@ function App() {
               <>
                 <Route path="/schools" element={<Schools />} />
                 <Route path="/users" element={<UserManagement />} />
+                <Route path="/import" element={<ImportPlayers />} />
               </>
             )}
             <Route path="*" element={<Navigate to="/" />} />

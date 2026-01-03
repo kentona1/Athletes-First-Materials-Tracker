@@ -168,3 +168,24 @@
   background-color: #f8d7da;
   color: #721c24;
 }
+
+/* Management header */
+.management-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.management-header h3 {
+  margin: 0;
+}
+
+/* New agent row */
+.new-agent-row {
+  background-color: #e8f5e9 !important;
+}
+
+.new-agent-row:hover {
+  background-color: #c8e6c9 !important;
+}

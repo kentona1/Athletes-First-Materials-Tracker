@@ -112,6 +112,24 @@ body {
   background-color: #545b62;
 }
 
+.btn-success {
+  background-color: #28a745;
+  color: white;
+}
+
+.btn-success:hover {
+  background-color: #218838;
+}
+
+.btn-info {
+  background-color: #17a2b8;
+  color: white;
+}
+
+.btn-info:hover {
+  background-color: #138496;
+}
+
 .btn-small {
   padding: 0.4rem 0.8rem;
   font-size: 0.875rem;
@@ -194,7 +212,8 @@ tbody tr:hover {
   color: #388e3c;
 }
 
-.status-badge.missed {
+.status-badge.missed,
+.status-badge.not-signed {
   background-color: #ffebee;
   color: #d32f2f;
 }
@@ -277,15 +296,8 @@ a:hover {
 
 /* Heat map card specific */
 .heat-map-card {
-  background: #000;
+  background: transparent;
   padding: 0;
   overflow: hidden;
-}
-
-.heat-map-card h3 {
-  color: #fff;
-  padding: 1.5rem;
-  margin: 0;
-  background: rgba(0, 0, 0, 0.8);
-  border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+  border-radius: 16px;
 }

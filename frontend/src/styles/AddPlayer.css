@@ -5,13 +5,283 @@
 }
 
 .add-player h2 {
-  margin-bottom: 2rem;
+  margin-bottom: 1.5rem;
   color: #333;
 }
 
 .add-player h3 {
   margin-bottom: 1rem;
   color: #333;
+}
+
+/* Tab Navigation */
+.player-type-tabs {
+  display: flex;
+  gap: 0;
+  margin-bottom: 2rem;
+  border-bottom: 2px solid #e0e0e0;
+}
+
+.tab-button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1rem 2rem;
+  background: transparent;
+  border: none;
+  border-bottom: 3px solid transparent;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 500;
+  color: #666;
+  transition: all 0.2s ease;
+  margin-bottom: -2px;
+}
+
+.tab-button:hover {
+  color: #333;
+  background: #f5f5f5;
+}
+
+.tab-button.active {
+  color: #007bff;
+  border-bottom-color: #007bff;
+  background: transparent;
+}
+
+.tab-icon {
+  font-size: 1.2rem;
+}
+
+.tab-content {
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ESPN Search Section */
+.espn-search-section {
+  margin-bottom: 2rem;
+  padding: 1.5rem;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #e0e0e0;
+}
+
+.espn-search-section h3 {
+  margin-top: 0;
+  margin-bottom: 1rem;
+}
+
+.search-form {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.search-input {
+  flex: 1;
+  padding: 0.75rem 1rem;
+  font-size: 1rem;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+}
+
+.search-results {
+  margin-top: 1.5rem;
+}
+
+.search-results h4 {
+  margin-bottom: 1rem;
+  color: #555;
+}
+
+.results-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.search-result-card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.search-result-card:hover {
+  border-color: #007bff;
+  box-shadow: 0 2px 8px rgba(0, 123, 255, 0.15);
+}
+
+.search-result-card .player-image {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.search-result-card .player-info {
+  flex: 1;
+}
+
+.search-result-card .player-name {
+  font-weight: 600;
+  font-size: 1rem;
+  color: #333;
+}
+
+.search-result-card .player-details {
+  color: #666;
+  font-size: 0.9rem;
+}
+
+/* Selected Player Preview */
+.selected-player-preview {
+  margin-bottom: 1.5rem;
+  padding: 1rem 1.5rem;
+  background: #e8f5e9;
+  border-radius: 8px;
+  border: 1px solid #4caf50;
+}
+
+.preview-content {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.preview-image {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.preview-info {
+  flex: 1;
+}
+
+.preview-badge {
+  font-weight: 600;
+  color: #2e7d32;
+  font-size: 0.85rem;
+}
+
+.preview-name {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #333;
+}
+
+.preview-details {
+  color: #666;
+  font-size: 0.9rem;
+}
+
+/* Form Styles */
+.player-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+}
+
+@media (max-width: 600px) {
+  .form-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.form-group label {
+  font-weight: 500;
+  margin-bottom: 0.5rem;
+  color: #333;
+}
+
+.form-group input,
+.form-group select {
+  padding: 0.75rem;
+  font-size: 1rem;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+}
+
+.disabled-input {
+  background: #f0f0f0 !important;
+  color: #666 !important;
+  cursor: not-allowed;
+}
+
+.form-info-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem 1.25rem;
+  background: #e3f2fd;
+  border-radius: 8px;
+  border: 1px solid #90caf9;
+  color: #1565c0;
+  font-size: 0.95rem;
+}
+
+.form-info-banner.veteran {
+  background: #fff3e0;
+  border-color: #ffcc80;
+  color: #e65100;
+}
+
+.info-icon {
+  font-size: 1.25rem;
+}
+
+.form-section-header {
+  font-weight: 600;
+  font-size: 1rem;
+  color: #555;
+  margin-top: 0.5rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  margin-top: 1rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #e0e0e0;
 }
 
 /* Agent Assignment Section */
@@ -148,5 +418,138 @@
   color: white;
   border-radius: 12px;
   font-size: 0.875rem;
+  font-weight: 600;
+}
+
+/* CFBD High School Search Section */
+.cfbd-search-section {
+  margin-bottom: 2rem;
+  padding: 1.5rem;
+  background: #fef3e2;
+  border-radius: 8px;
+  border: 1px solid #ffc107;
+}
+
+.cfbd-search-section h3 {
+  margin-top: 0;
+  margin-bottom: 1rem;
+  color: #856404;
+}
+
+/* HS Search Results */
+.hs-results {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.hs-card {
+  flex-direction: row;
+  align-items: flex-start;
+  padding: 1rem;
+}
+
+.hs-player-info {
+  flex: 1;
+}
+
+.hs-player-info .player-name {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1.1rem;
+}
+
+.stars-badge {
+  font-size: 0.9rem;
+}
+
+.player-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.class-badge {
+  display: inline-block;
+  padding: 0.2rem 0.6rem;
+  background: #e3f2fd;
+  color: #1565c0;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.ranking-badge {
+  display: inline-block;
+  padding: 0.2rem 0.6rem;
+  background: #e8f5e9;
+  color: #2e7d32;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.committed-badge {
+  display: inline-block;
+  padding: 0.2rem 0.6rem;
+  background: #fce4ec;
+  color: #c2185b;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+/* HS Player Preview */
+.hs-preview {
+  background: #fff8e1;
+  border-color: #ffc107;
+}
+
+.hs-preview .preview-badge {
+  color: #856404;
+}
+
+.hs-avatar {
+  width: 60px;
+  height: 60px;
+  background: #fff3cd;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+}
+
+.preview-commitment {
+  margin-top: 0.25rem;
+  font-size: 0.85rem;
+  color: #c2185b;
+  font-weight: 500;
+}
+
+/* NFL Search Section */
+.nfl-search {
+  background: #e3f2fd;
+  border-color: #1976d2;
+}
+
+.nfl-search h3 {
+  color: #1565c0;
+}
+
+/* NFL Player Preview */
+.nfl-preview {
+  background: #e3f2fd;
+  border-color: #1976d2;
+}
+
+.nfl-preview .preview-badge,
+.nfl-badge {
+  background: #1976d2;
+  color: white;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.8rem;
   font-weight: 600;
 }

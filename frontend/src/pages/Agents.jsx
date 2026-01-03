@@ -9,6 +9,8 @@ function Agents() {
   const [activeTab, setActiveTab] = useState('performance'); // 'performance' or 'management'
   const [editingAgent, setEditingAgent] = useState(null);
   const [editForm, setEditForm] = useState({ first_name: '', last_name: '', email: '', phone: '' });
+  const [showNewAgentForm, setShowNewAgentForm] = useState(false);
+  const [newAgentForm, setNewAgentForm] = useState({ first_name: '', last_name: '', email: '', phone: '' });
 
   useEffect(() => {
     fetchAgentsData();
@@ -84,6 +86,30 @@ function Agents() {
     }
   };
 
+  const handleCreateAgent = async () => {
+    if (!newAgentForm.first_name || !newAgentForm.last_name) {
+      alert('First name and last name are required');
+      return;
+    }
+
+    try {
+      await axios.post('/api/agents', newAgentForm);
+      setShowNewAgentForm(false);
+      setNewAgentForm({ first_name: '', last_name: '', email: '', phone: '' });
+      fetchAllAgents();
+      fetchAgentsData();
+      alert('Agent created successfully!');
+    } catch (error) {
+      console.error('Error creating agent:', error);
+      alert('Error creating agent: ' + (error.response?.data?.error || error.message));
+    }
+  };
+
+  const handleCancelNewAgent = () => {
+    setShowNewAgentForm(false);
+    setNewAgentForm({ first_name: '', last_name: '', email: '', phone: '' });
+  };
+
   if (loading) {
     return <div className="loading">Loading agents...</div>;
   }
@@ -149,7 +175,14 @@ function Agents() {
 
       {activeTab === 'management' && (
         <div className="agents-management">
-          <h3>Manage Agents</h3>
+          <div className="management-header">
+            <h3>Manage Agents</h3>
+            {!showNewAgentForm && (
+              <button onClick={() => setShowNewAgentForm(true)} className="btn btn-success">
+                + Add New Agent
+              </button>
+            )}
+          </div>
           <div className="agents-table">
             <table>
               <thead>
@@ -163,6 +196,66 @@ function Agents() {
                 </tr>
               </thead>
               <tbody>
+                {/* New Agent Form Row */}
+                {showNewAgentForm && (
+                  <tr className="new-agent-row">
+                    <td>
+                      <input
+                        type="text"
+                        value={newAgentForm.first_name}
+                        onChange={(e) => setNewAgentForm({ ...newAgentForm, first_name: e.target.value })}
+                        className="edit-input"
+                        placeholder="First name *"
+                        autoFocus
+                      />
+                    </td>
+                    <td>
+                      <input
+                        type="text"
+                        value={newAgentForm.last_name}
+                        onChange={(e) => setNewAgentForm({ ...newAgentForm, last_name: e.target.value })}
+                        className="edit-input"
+                        placeholder="Last name *"
+                      />
+                    </td>
+                    <td>
+                      <input
+                        type="email"
+                        value={newAgentForm.email}
+                        onChange={(e) => setNewAgentForm({ ...newAgentForm, email: e.target.value })}
+                        className="edit-input"
+                        placeholder="Email"
+                      />
+                    </td>
+                    <td>
+                      <input
+                        type="tel"
+                        value={newAgentForm.phone}
+                        onChange={(e) => setNewAgentForm({ ...newAgentForm, phone: e.target.value })}
+                        className="edit-input"
+                        placeholder="Phone"
+                      />
+                    </td>
+                    <td>
+                      <span className="status-badge active">New</span>
+                    </td>
+                    <td>
+                      <button
+                        onClick={handleCreateAgent}
+                        className="btn-small btn-success"
+                        style={{ marginRight: '5px' }}
+                      >
+                        Create
+                      </button>
+                      <button
+                        onClick={handleCancelNewAgent}
+                        className="btn-small btn-secondary"
+                      >
+                        Cancel
+                      </button>
+                    </td>
+                  </tr>
+                )}
                 {agents.map((agent) => (
                   <tr key={agent.id} className={!agent.active ? 'inactive-row' : ''}>
                     {editingAgent === agent.id ? (

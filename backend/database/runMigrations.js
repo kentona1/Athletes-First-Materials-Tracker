@@ -4,6 +4,58 @@ const path = require('path');
 
 async function runMigrations() {
   try {
+    // ============================================================
+    // Migration: Add player_type, recruiting_cycle_year, eligibility_number
+    // ============================================================
+    const playerColumns = await db.query("PRAGMA table_info(players)");
+
+    const hasPlayerType = playerColumns.some(col => col.name === 'player_type');
+    const hasRecruitingCycleYear = playerColumns.some(col => col.name === 'recruiting_cycle_year');
+    const hasEligibilityNumber = playerColumns.some(col => col.name === 'eligibility_number');
+    const hasNflTeam = playerColumns.some(col => col.name === 'nfl_team');
+    const hasYearsPro = playerColumns.some(col => col.name === 'years_pro');
+
+    if (!hasPlayerType) {
+      console.log('📦 Running migration: Add player_type to players...');
+      await db.run(`ALTER TABLE players ADD COLUMN player_type TEXT DEFAULT 'college'`);
+      console.log('✅ Migration completed: player_type column added');
+    }
+
+    if (!hasRecruitingCycleYear) {
+      console.log('📦 Running migration: Add recruiting_cycle_year to players...');
+      await db.run(`ALTER TABLE players ADD COLUMN recruiting_cycle_year INTEGER`);
+      console.log('✅ Migration completed: recruiting_cycle_year column added');
+    }
+
+    if (!hasEligibilityNumber) {
+      console.log('📦 Running migration: Add eligibility_number to players...');
+      await db.run(`ALTER TABLE players ADD COLUMN eligibility_number INTEGER`);
+      console.log('✅ Migration completed: eligibility_number column added');
+    }
+
+    if (!hasNflTeam) {
+      console.log('📦 Running migration: Add nfl_team to players...');
+      await db.run(`ALTER TABLE players ADD COLUMN nfl_team TEXT`);
+      console.log('✅ Migration completed: nfl_team column added');
+    }
+
+    if (!hasYearsPro) {
+      console.log('📦 Running migration: Add years_pro to players...');
+      await db.run(`ALTER TABLE players ADD COLUMN years_pro INTEGER`);
+      console.log('✅ Migration completed: years_pro column added');
+    }
+
+    // ============================================================
+    // Migration: Consolidate status values
+    // ============================================================
+    console.log('📦 Running migration: Consolidating status values...');
+    await db.run(`UPDATE players SET status = 'Not Signed' WHERE status IN ('Missed', 'Walked Away', 'No Meeting')`);
+    console.log('✅ Status values consolidated');
+
+    // ============================================================
+    // Original migrations below
+    // ============================================================
+
     // Check if event_id column already exists in player_materials
     const materialColumns = await db.query("PRAGMA table_info(player_materials)");
     const hasEventId = materialColumns.some(col => col.name === 'event_id');

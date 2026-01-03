@@ -16,12 +16,13 @@ class PlayersController {
       } = req.query;
 
       let sql = `
-        SELECT 
+        SELECT
           p.*,
           GROUP_CONCAT(DISTINCT a.name) as agents,
           COUNT(DISTINCT pm.id) as materials_count,
-          po.status as outcome_status,
-          po.draft_round
+          COALESCE(po.status, p.status) as outcome_status,
+          COALESCE(po.draft_round, p.draft_round) as draft_round,
+          COALESCE(po.draft_year, p.draft_year) as draft_year
         FROM players p
         LEFT JOIN player_agents pa ON p.id = pa.player_id
         LEFT JOIN agents a ON pa.agent_id = a.id
@@ -174,6 +175,12 @@ class PlayersController {
         }
       }
 
+      // Determine default status based on player type
+      let defaultStatus = 'Active';
+      if (playerData.player_type === 'veteran') {
+        defaultStatus = 'Not Signed';
+      }
+
       const result = await db.run(`
         INSERT INTO players (
           name, position, school, conference, hometown, state,
@@ -181,22 +188,24 @@ class PlayersController {
           photo_url, espn_id, status,
           high_school, recruiting_class_year, recruiting_stars,
           recruiting_rating, recruiting_ranking, recruiting_state_ranking,
-          recruiting_position_ranking, original_commitment
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          recruiting_position_ranking, original_commitment,
+          player_type, recruiting_cycle_year, eligibility_number,
+          nfl_team, years_pro
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `, [
         playerData.name,
         playerData.position,
-        playerData.school,
-        playerData.conference,
-        playerData.hometown,
-        playerData.state,
-        playerData.height,
-        playerData.weight,
-        playerData.class_year,
-        playerData.eligibility_year,
-        playerData.photo_url,
-        playerData.espn_id,
-        playerData.status || 'Active',
+        playerData.school || null,
+        playerData.conference || null,
+        playerData.hometown || null,
+        playerData.state || null,
+        playerData.height || null,
+        playerData.weight || null,
+        playerData.class_year || null,
+        playerData.eligibility_year || null,
+        playerData.photo_url || null,
+        playerData.espn_id || null,
+        playerData.status || defaultStatus,
         playerData.high_school || null,
         playerData.recruiting_class_year || null,
         playerData.recruiting_stars || null,
@@ -204,7 +213,12 @@ class PlayersController {
         playerData.recruiting_ranking || null,
         playerData.recruiting_state_ranking || null,
         playerData.recruiting_position_ranking || null,
-        playerData.original_commitment || null
+        playerData.original_commitment || null,
+        playerData.player_type || 'college',
+        playerData.recruiting_cycle_year || null,
+        playerData.eligibility_number || null,
+        playerData.nfl_team || null,
+        playerData.years_pro || null
       ]);
 
       res.json({
@@ -355,6 +369,140 @@ class PlayersController {
       res.status(500).json({
         success: false,
         error: 'ESPN API error',
+        message: error.message
+      });
+    }
+  }
+
+  // Search ESPN for NFL player data (veterans)
+  async searchNFL(req, res) {
+    try {
+      const { name } = req.query;
+
+      if (!name) {
+        return res.status(400).json({
+          success: false,
+          error: 'Name parameter required'
+        });
+      }
+
+      console.log('🏈 Searching ESPN NFL for:', name);
+
+      // Use ESPN's search/autocomplete API for NFL
+      const searchResponse = await axios.get(
+        'https://site.web.api.espn.com/apis/search/v2',
+        {
+          params: {
+            region: 'us',
+            lang: 'en',
+            query: name,
+            type: 'player',
+            sport: 'football',
+            league: 'nfl',
+            limit: 20
+          }
+        }
+      );
+
+      // Extract player results - ESPN returns nested structure
+      const resultGroups = searchResponse.data?.results || [];
+
+      // Flatten all player contents from all result groups
+      let allPlayers = [];
+      resultGroups.forEach(group => {
+        if (group.type === 'player' && group.contents) {
+          allPlayers = allPlayers.concat(group.contents);
+        }
+      });
+
+      console.log('👥 Found', allPlayers.length, 'NFL players');
+
+      // Format results for frontend
+      const formattedPlayers = allPlayers.map(player => {
+        // Extract player ID from UID (format: s:20~l:28~a:4602019)
+        const playerId = player.uid?.split('~a:')[1] || player.id;
+
+        return {
+          id: playerId,
+          name: player.displayName || player.name,
+          position: player.position?.abbreviation || player.position,
+          team: player.subtitle, // ESPN uses subtitle for team
+          sport: player.sport,
+          league: player.defaultLeagueSlug,
+          image: player.image?.default || player.image?.defaultDark,
+          url: player.link?.web
+        };
+      });
+
+      console.log('✅ Returning', formattedPlayers.length, 'NFL players');
+
+      res.json({ success: true, data: formattedPlayers });
+    } catch (error) {
+      console.error('Error searching ESPN NFL:', error.message);
+      res.status(500).json({
+        success: false,
+        error: 'ESPN NFL API error',
+        message: error.message
+      });
+    }
+  }
+
+  // Get detailed NFL player data from ESPN by ID
+  async getNFLPlayerDetails(req, res) {
+    try {
+      const { id } = req.params;
+
+      console.log('🏈 Fetching NFL player details for ID:', id);
+
+      if (!id) {
+        return res.status(400).json({
+          success: false,
+          error: 'Player ID required'
+        });
+      }
+
+      // Get NFL player profile from ESPN
+      const profileUrl = `https://site.web.api.espn.com/apis/common/v3/sports/football/nfl/athletes/${id}`;
+      const profileResponse = await axios.get(profileUrl);
+      const athlete = profileResponse.data?.athlete;
+
+      if (!athlete) {
+        return res.status(404).json({
+          success: false,
+          error: 'Player not found'
+        });
+      }
+
+      // Extract relevant data
+      const playerData = {
+        id: athlete.id,
+        name: athlete.displayName,
+        firstName: athlete.firstName,
+        lastName: athlete.lastName,
+        position: athlete.position?.abbreviation,
+        team: athlete.team?.displayName,
+        teamAbbr: athlete.team?.abbreviation,
+        jersey: athlete.jersey,
+        height: athlete.displayHeight,
+        weight: athlete.displayWeight,
+        age: athlete.age,
+        birthPlace: athlete.birthPlace?.city && athlete.birthPlace?.state
+          ? `${athlete.birthPlace.city}, ${athlete.birthPlace.state}`
+          : null,
+        college: athlete.college?.name,
+        experience: athlete.experience?.years,
+        photo_url: athlete.headshot?.href,
+        status: athlete.status?.type
+      };
+
+      console.log('✅ NFL player data:', playerData);
+
+      res.json({ success: true, data: playerData });
+    } catch (error) {
+      console.error('Error fetching NFL player details:', error.message);
+      res.status(500).json({
+        success: false,
+        error: 'ESPN NFL API error',
         message: error.message
       });
     }
@@ -977,10 +1125,15 @@ class PlayersController {
         });
       }
 
-      // Update player status
+      // Update player status and draft info
       await db.run(
-        'UPDATE players SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
-        [status, id]
+        `UPDATE players SET
+          status = ?,
+          draft_round = COALESCE(?, draft_round),
+          draft_year = COALESCE(?, draft_year),
+          updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?`,
+        [status, draft_round || null, draft_year || null, id]
       );
 
       // Check if outcome record exists
@@ -1021,6 +1174,109 @@ class PlayersController {
     } catch (error) {
       console.error('Error updating player outcome:', error);
       res.status(500).json({ success: false, error: error.message });
+    }
+  }
+
+  // Search CFBD for high school recruits
+  async searchHSRecruits(req, res) {
+    try {
+      const { name, year, state, position } = req.query;
+
+      if (!name && !year) {
+        return res.status(400).json({
+          success: false,
+          error: 'Name or year parameter required'
+        });
+      }
+
+      const apiKey = process.env.CFBD_API_KEY;
+      if (!apiKey) {
+        return res.status(500).json({
+          success: false,
+          error: 'CFBD API key not configured'
+        });
+      }
+
+      console.log('🎓 Searching CFBD HS recruits:', { name, year, state, position });
+
+      // Build params for CFBD API
+      const params = {};
+      if (year) params.year = year;
+      if (state) params.state = state;
+      if (position) params.position = position;
+
+      // If no year specified, search current and upcoming classes
+      const currentYear = new Date().getFullYear();
+      const yearsToSearch = year ? [parseInt(year)] : [currentYear, currentYear + 1, currentYear + 2, currentYear + 3];
+
+      let allRecruits = [];
+
+      for (const searchYear of yearsToSearch) {
+        try {
+          const response = await axios.get(
+            'https://api.collegefootballdata.com/recruiting/players',
+            {
+              params: { ...params, year: searchYear },
+              headers: { 'Authorization': `Bearer ${apiKey}` }
+            }
+          );
+
+          const yearRecruits = response.data || [];
+          allRecruits = allRecruits.concat(yearRecruits);
+          console.log(`  Year ${searchYear}: ${yearRecruits.length} recruits`);
+        } catch (yearError) {
+          console.warn(`  Year ${searchYear} failed:`, yearError.message);
+        }
+      }
+
+      // Filter by name if provided
+      let filteredRecruits = allRecruits;
+      if (name) {
+        const searchName = name.toLowerCase().trim();
+        filteredRecruits = allRecruits.filter(recruit => {
+          const recruitName = recruit.name?.toLowerCase() || '';
+          return recruitName.includes(searchName) || searchName.includes(recruitName);
+        });
+      }
+
+      // Sort by ranking (best first), then by year
+      filteredRecruits.sort((a, b) => {
+        if (a.year !== b.year) return b.year - a.year; // Most recent year first
+        return (a.ranking || 9999) - (b.ranking || 9999); // Best ranking first
+      });
+
+      // Limit results
+      const limitedResults = filteredRecruits.slice(0, 50);
+
+      console.log(`✅ Found ${filteredRecruits.length} matches, returning ${limitedResults.length}`);
+
+      // Format response
+      const formattedRecruits = limitedResults.map(recruit => ({
+        id: recruit.id,
+        athleteId: recruit.athleteId,
+        name: recruit.name,
+        position: recruit.position,
+        highSchool: recruit.school,
+        city: recruit.city,
+        state: recruit.stateProvince,
+        country: recruit.country,
+        height: recruit.height, // in inches
+        weight: recruit.weight,
+        stars: recruit.stars,
+        rating: recruit.rating,
+        ranking: recruit.ranking,
+        recruitingClass: recruit.year,
+        committedTo: recruit.committedTo,
+        recruitType: recruit.recruitType
+      }));
+
+      res.json({ success: true, data: formattedRecruits });
+    } catch (error) {
+      console.error('Error searching HS recruits:', error.message);
+      res.status(500).json({
+        success: false,
+        error: error.message
+      });
     }
   }
 }

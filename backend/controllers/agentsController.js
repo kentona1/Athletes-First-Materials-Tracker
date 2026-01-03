@@ -86,16 +86,26 @@ class AgentsController {
   // Create new agent
   async createAgent(req, res) {
     try {
-      const { name, email, phone } = req.body;
+      const { first_name, last_name, email, phone, name: providedName } = req.body;
+
+      // Support both name field or first_name/last_name
+      const fullName = providedName || `${first_name || ''} ${last_name || ''}`.trim();
+
+      if (!fullName) {
+        return res.status(400).json({
+          success: false,
+          error: 'Agent name is required (provide name or first_name/last_name)'
+        });
+      }
 
       const result = await db.run(`
-        INSERT INTO agents (name, email, phone)
-        VALUES (?, ?, ?)
-      `, [name, email, phone]);
+        INSERT INTO agents (name, first_name, last_name, email, phone)
+        VALUES (?, ?, ?, ?, ?)
+      `, [fullName, first_name || null, last_name || null, email || null, phone || null]);
 
       res.json({
         success: true,
-        data: { id: result.id, name, email, phone }
+        data: { id: result.id, name: fullName, first_name, last_name, email, phone }
       });
     } catch (error) {
       console.error('Error creating agent:', error);

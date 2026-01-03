@@ -81,7 +81,6 @@ function Analytics() {
 
       <div className="charts-grid">
         <div className="chart-card full-width heat-map-card">
-          <h3>Geographic Distribution - School-Level Heat Map</h3>
           <AdvancedHeatMap filters={{ year }} />
         </div>
 
