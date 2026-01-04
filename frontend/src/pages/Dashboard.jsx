@@ -15,7 +15,7 @@ function Dashboard() {
     try {
       const [analyticsRes, playersRes] = await Promise.all([
         axios.get('/api/players/analytics'),
-        axios.get('/api/players?limit=5')
+        axios.get('/api/players?limit=10')
       ]);
 
       setStats(analyticsRes.data.data);
@@ -42,35 +42,35 @@ function Dashboard() {
           <h3>Total Prospects</h3>
           <p className="stat-number">{overall.total_players || 0}</p>
         </div>
-        
+
         <div className="stat-card signed">
           <h3>Signed</h3>
           <p className="stat-number">{overall.signed || 0}</p>
           <span className="stat-percentage">
-            {overall.total_players > 0 
+            {overall.total_players > 0
               ? `${((overall.signed / overall.total_players) * 100).toFixed(1)}%`
               : '0%'}
           </span>
         </div>
-        
-        <div className="stat-card missed">
-          <h3>Missed</h3>
-          <p className="stat-number">{overall.missed || 0}</p>
+
+        <div className="stat-card not-signed">
+          <h3>Not Signed</h3>
+          <p className="stat-number">{overall.not_signed || 0}</p>
+          <span className="stat-percentage">
+            {overall.total_players > 0
+              ? `${((overall.not_signed / overall.total_players) * 100).toFixed(1)}%`
+              : '0%'}
+          </span>
         </div>
-        
-        <div className="stat-card walked">
-          <h3>Walked Away</h3>
-          <p className="stat-number">{overall.walked_away || 0}</p>
-        </div>
-        
-        <div className="stat-card returned">
-          <h3>Returned to School</h3>
+
+        <div className="stat-card active">
+          <h3>Active</h3>
           <p className="stat-number">{overall.returned || 0}</p>
-        </div>
-        
-        <div className="stat-card no-meeting">
-          <h3>No Meeting</h3>
-          <p className="stat-number">{overall.no_meeting || 0}</p>
+          <span className="stat-percentage">
+            {overall.total_players > 0
+              ? `${((overall.returned / overall.total_players) * 100).toFixed(1)}%`
+              : '0%'}
+          </span>
         </div>
       </div>
 

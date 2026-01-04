@@ -37,10 +37,8 @@ function Analytics() {
 
   const outcomeData = [
     { name: 'Signed', value: analytics.overall.signed },
-    { name: 'Missed', value: analytics.overall.missed },
-    { name: 'Walked Away', value: analytics.overall.walked_away },
-    { name: 'Returned', value: analytics.overall.returned },
-    { name: 'No Meeting', value: analytics.overall.no_meeting }
+    { name: 'Not Signed', value: analytics.overall.not_signed },
+    { name: 'Active', value: analytics.overall.returned }
   ].filter(item => item.value > 0);
 
   return (
@@ -137,17 +135,6 @@ function Analytics() {
           </ResponsiveContainer>
         </div>
 
-        <div className="chart-card">
-          <h3>Top Materials Used</h3>
-          <div className="materials-list">
-            {analytics.materialsUsage?.slice(0, 10).map((material, idx) => (
-              <div key={idx} className="material-stat">
-                <span className="material-name">{material.name}</span>
-                <span className="material-count">{material.usage_count} uses</span>
-              </div>
-            ))}
-          </div>
-        </div>
       </div>
     </div>
   );

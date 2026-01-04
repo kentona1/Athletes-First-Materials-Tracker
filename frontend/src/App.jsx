@@ -12,9 +12,11 @@ import AddPlayer from './pages/AddPlayer';
 import Analytics from './pages/Analytics';
 import Materials from './pages/Materials';
 import Agents from './pages/Agents';
+import AgentDetail from './pages/AgentDetail';
 import UserManagement from './pages/UserManagement';
 import Schools from './pages/Schools';
 import ImportPlayers from './pages/ImportPlayers';
+import EditPlayer from './pages/EditPlayer';
 
 function App() {
   const [user, setUser] = useState(null);
@@ -26,7 +28,13 @@ function App() {
     const storedUser = localStorage.getItem('user');
 
     if (token && storedUser) {
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      // Clean token in case it has "Bearer " prefix already
+      const cleanToken = token.startsWith('Bearer ') ? token.substring(7) : token;
+      // Store clean token back to localStorage
+      if (token !== cleanToken) {
+        localStorage.setItem('token', cleanToken);
+      }
+      axios.defaults.headers.common['Authorization'] = `Bearer ${cleanToken}`;
       setUser(JSON.parse(storedUser));
     }
     setLoading(false);
@@ -87,8 +95,10 @@ function App() {
             <Route path="/players" element={<PlayersList />} />
             <Route path="/players/new" element={<AddPlayer />} />
             <Route path="/players/:id" element={<PlayerDetail />} />
+            <Route path="/players/:id/edit" element={<EditPlayer />} />
             <Route path="/materials" element={<Materials />} />
             <Route path="/agents" element={<Agents />} />
+            <Route path="/agents/:id" element={<AgentDetail />} />
             <Route path="/analytics" element={<Analytics />} />
             {user.role === 'admin' && (
               <>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import axios from '../api/axios';
 import { formatHeight } from '../utils/formatters';
 import MaterialEventForm from '../components/MaterialEventForm';
@@ -64,9 +64,18 @@ function PlayerDetail() {
     height: '',
     weight: '',
     hometown: '',
-    state: ''
+    state: '',
+    high_school: '',
+    recruiting_class_year: null,
+    recruiting_stars: null,
+    recruiting_rating: null,
+    recruiting_ranking: null,
+    original_commitment: ''
   });
+  const [connectTransferData, setConnectTransferData] = useState([]);
   const [connectSaving, setConnectSaving] = useState(false);
+  const [manualSchoolSearch, setManualSchoolSearch] = useState('');
+  const [searching247, setSearching247] = useState(false);
 
   const [outcomeData, setOutcomeData] = useState({
     status: '',
@@ -88,13 +97,52 @@ function PlayerDetail() {
     notes: ''
   });
 
+  // Navigation state for prev/next players
+  const [adjacentPlayers, setAdjacentPlayers] = useState({ prev: null, next: null });
+
   useEffect(() => {
     fetchPlayerDetails();
     fetchMaterialTypes();
     fetchAgents();
     fetchMaterialEvents();
+    fetchAdjacentPlayers();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  // Keyboard navigation (left/right arrows)
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      // Don't navigate if user is typing in an input
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') {
+        return;
+      }
+      if (e.key === 'ArrowLeft' && adjacentPlayers.prev) {
+        navigate(`/players/${adjacentPlayers.prev}`);
+      } else if (e.key === 'ArrowRight' && adjacentPlayers.next) {
+        navigate(`/players/${adjacentPlayers.next}`);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [adjacentPlayers, navigate]);
+
+  const fetchAdjacentPlayers = async () => {
+    try {
+      // Get all player IDs sorted by last name (matching list view default)
+      const response = await axios.get('/api/players?sortBy=lastName');
+      const players = response.data.data || [];
+      const currentIndex = players.findIndex(p => p.id === parseInt(id));
+
+      if (currentIndex !== -1) {
+        setAdjacentPlayers({
+          prev: currentIndex > 0 ? players[currentIndex - 1].id : null,
+          next: currentIndex < players.length - 1 ? players[currentIndex + 1].id : null
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching adjacent players:', error);
+    }
+  };
 
   const fetchProgressionLogos = async (playerData) => {
     const logos = {};
@@ -548,30 +596,149 @@ function PlayerDetail() {
           console.warn('CFBD player search failed:', cfbdError.message);
         }
 
-        // Always try recruiting data for hometown (more reliable source)
-        if (!hometown || !state) {
-          try {
-            const recruitingResponse = await axios.get('/api/players/recruiting-data', {
-              params: { name: player.name, team: player.school }
-            });
+        // Fetch transfer history FIRST so we know the original school
+        // Only use trusted school sources: database school and original_commitment
+        // DO NOT use espnPlayer.school - it could be from a different player with same name
+        let transfers = [];
+        let originalSchool = null;
+        const transferSchoolsToTry = [];
+        if (player.school) transferSchoolsToTry.push(player.school);
+        if (player.original_commitment && player.original_commitment !== player.school) {
+          transferSchoolsToTry.push(player.original_commitment);
+        }
 
-            if (recruitingResponse.data.data && recruitingResponse.data.data.length > 0) {
-              const recruit = recruitingResponse.data.data[0];
-              // Use recruiting data for hometown/state if not already set
-              if (!hometown) hometown = recruit.hometown || '';
-              if (!state) state = recruit.state || '';
-              // Also use height/weight from recruiting if not already set
-              if (!height && recruit.height) {
-                const feet = Math.floor(recruit.height / 12);
-                const inches = recruit.height % 12;
-                height = `${feet}'${inches}"`;
+        for (const searchSchool of transferSchoolsToTry) {
+          if (transfers.length > 0) break; // Stop once we find transfers
+          try {
+            console.log(`Searching transfers with school: ${searchSchool}`);
+            const transferResponse = await axios.get('/api/players/transfer-data', {
+              params: {
+                name: player.name,
+                school: searchSchool
               }
-              if (!weight) weight = recruit.weight ? String(recruit.weight) : '';
+            });
+            transfers = transferResponse.data.data || [];
+            if (transfers.length > 0) {
+              originalSchool = transfers[0].fromSchool;
+              console.log('Found transfers, original school:', originalSchool);
             }
-          } catch (recruitError) {
-            console.warn('Recruiting data failed:', recruitError.message);
+          } catch (transferError) {
+            console.warn(`Transfer search for ${searchSchool} failed:`, transferError.message);
           }
         }
+
+        // Fetch full recruiting data (hometown, stars, rating, ranking, high school, original commitment)
+        // Try CFBD first, then fall back to 247Sports for older players
+        let recruitingData = null;
+        let recruitingSource = null;
+
+        // Try CFBD first
+        try {
+          const recruitingResponse = await axios.get('/api/players/recruiting-data', {
+            params: { name: player.name, team: player.school }
+          });
+
+          if (recruitingResponse.data.data && recruitingResponse.data.data.length > 0) {
+            recruitingData = recruitingResponse.data.data[0];
+            recruitingSource = 'cfbd';
+            console.log('Found recruiting data from CFBD:', recruitingData);
+          }
+        } catch (recruitError) {
+          console.warn('CFBD recruiting data failed:', recruitError.message);
+        }
+
+        // If CFBD didn't return data, try 247Sports as fallback
+        // Only use trusted school sources - NOT espnPlayer.school (could be different player)
+        if (!recruitingData) {
+          const schoolsToTry = [];
+          if (player.school) schoolsToTry.push(player.school);
+          if (player.original_commitment && player.original_commitment !== player.school) {
+            schoolsToTry.push(player.original_commitment);
+          }
+          if (originalSchool && !schoolsToTry.includes(originalSchool)) {
+            schoolsToTry.push(originalSchool);
+          }
+
+          for (const searchSchool of schoolsToTry) {
+            if (recruitingData) break;
+            try {
+              console.log(`CFBD returned no data, trying 247Sports with school: ${searchSchool}...`);
+              const params247 = { name: player.name, school: searchSchool };
+              const response247 = await axios.get('/api/players/recruiting-data-247', { params: params247 });
+
+              if (response247.data.data && response247.data.data.length > 0) {
+                recruitingData = response247.data.data[0];
+                recruitingSource = '247sports';
+                console.log('Found recruiting data from 247Sports:', recruitingData);
+              }
+            } catch (error247) {
+              console.warn(`247Sports search for ${searchSchool} failed:`, error247.message);
+            }
+          }
+        }
+
+        // Apply recruiting data if found from either source
+        if (recruitingData) {
+          // Use recruiting data for hometown/state if not already set
+          if (!hometown) hometown = recruitingData.hometown || '';
+          if (!state) state = recruitingData.state || '';
+          // Also use height/weight from recruiting if not already set
+          if (!height && recruitingData.height) {
+            // CFBD returns height in inches, 247 returns formatted string like "6'3""
+            if (typeof recruitingData.height === 'number' && recruitingData.height > 12) {
+              const feet = Math.floor(recruitingData.height / 12);
+              const inches = recruitingData.height % 12;
+              height = `${feet}'${inches}"`;
+            } else if (typeof recruitingData.height === 'string') {
+              height = recruitingData.height;
+            }
+          }
+          if (!weight) weight = recruitingData.weight ? String(recruitingData.weight) : '';
+
+          // If recruiting data shows a different school than ESPN returned (e.g., ESPN returned high school),
+          // re-search transfers using the correct college
+          const recruitingSchool = recruitingData.school || recruitingData.committedTo;
+          if (recruitingSchool && transfers.length === 0 &&
+              recruitingSchool.toLowerCase() !== player.school?.toLowerCase()) {
+            console.log(`Re-searching transfers with correct school: ${recruitingSchool} (ESPN had: ${player.school})`);
+            try {
+              const transferResponse2 = await axios.get('/api/players/transfer-data', {
+                params: {
+                  name: player.name,
+                  school: recruitingSchool,
+                  recruitingYear: recruitingData.classYear
+                }
+              });
+              transfers = transferResponse2.data.data || [];
+              if (transfers.length > 0) {
+                console.log('Found transfers after re-search:', transfers.length);
+              }
+            } catch (err) {
+              console.warn('Transfer re-search failed:', err.message);
+            }
+          }
+        }
+
+        setConnectTransferData(transfers);
+        setConnectData({
+          espn_id: espnId || '',
+          photo_url: photoUrl,
+          height: height,
+          weight: weight,
+          hometown: hometown,
+          state: state,
+          high_school: recruitingData?.highSchool || '',
+          recruiting_class_year: recruitingData?.classYear || null,
+          recruiting_stars: recruitingData?.stars || null,
+          recruiting_rating: recruitingData?.rating || null,
+          recruiting_ranking: recruitingData?.ranking || null,
+          original_commitment: recruitingData?.school || ''
+        });
+
+        setSelectedConnectPlayer(espnPlayer);
+        setConnectSearchResults([]);
+        setConnectSearchQuery('');
+        return; // Exit early since we've set the data
       } else {
         // For veterans, try ESPN NFL details
         try {
@@ -594,14 +761,22 @@ function PlayerDetail() {
         }
       }
 
+      // For veterans - set data without recruiting info
       setConnectData({
         espn_id: espnId || '',
         photo_url: photoUrl,
         height: height,
         weight: weight,
         hometown: hometown,
-        state: state
+        state: state,
+        high_school: '',
+        recruiting_class_year: null,
+        recruiting_stars: null,
+        recruiting_rating: null,
+        recruiting_ranking: null,
+        original_commitment: ''
       });
+      setConnectTransferData([]);
 
       setSelectedConnectPlayer(espnPlayer);
       setConnectSearchResults([]);
@@ -615,8 +790,15 @@ function PlayerDetail() {
         height: '',
         weight: '',
         hometown: '',
-        state: ''
+        state: '',
+        high_school: '',
+        recruiting_class_year: null,
+        recruiting_stars: null,
+        recruiting_rating: null,
+        recruiting_ranking: null,
+        original_commitment: ''
       });
+      setConnectTransferData([]);
       setSelectedConnectPlayer(espnPlayer);
       setConnectSearchResults([]);
     }
@@ -631,26 +813,128 @@ function PlayerDetail() {
       height: '',
       weight: '',
       hometown: '',
-      state: ''
+      state: '',
+      high_school: '',
+      recruiting_class_year: null,
+      recruiting_stars: null,
+      recruiting_rating: null,
+      recruiting_ranking: null,
+      original_commitment: ''
     });
+    setConnectTransferData([]);
+    setManualSchoolSearch('');
   };
 
-  // Save Connect to ESPN data - ONLY updates specific fields, NOT class_year
+  // Manual 247Sports search for a different school
+  const handleManual247Search = async () => {
+    if (!manualSchoolSearch.trim() || !selectedConnectPlayer) return;
+
+    setSearching247(true);
+    try {
+      console.log('Manual 247 search for:', selectedConnectPlayer.name, 'at', manualSchoolSearch);
+      const response = await axios.get('/api/players/recruiting-data-247', {
+        params: {
+          name: selectedConnectPlayer.name,
+          school: manualSchoolSearch.trim()
+        }
+      });
+
+      if (response.data.data && response.data.data.length > 0) {
+        const recruitingData = response.data.data[0];
+        console.log('Found via manual 247 search:', recruitingData);
+
+        // Update connectData with found recruiting info
+        setConnectData(prev => ({
+          ...prev,
+          high_school: recruitingData.highSchool || prev.high_school,
+          recruiting_class_year: recruitingData.classYear || prev.recruiting_class_year,
+          recruiting_stars: recruitingData.stars || prev.recruiting_stars,
+          recruiting_rating: recruitingData.rating || prev.recruiting_rating,
+          recruiting_ranking: recruitingData.ranking || prev.recruiting_ranking,
+          original_commitment: recruitingData.school || prev.original_commitment,
+          hometown: recruitingData.hometown || prev.hometown,
+          state: recruitingData.state || prev.state,
+          height: recruitingData.height || prev.height,
+          weight: recruitingData.weight || prev.weight
+        }));
+
+        // NOW search for transfers using the found school (this was missing before!)
+        const recruitingSchool = recruitingData.school;
+        if (recruitingSchool && connectTransferData.length === 0) {
+          console.log(`Searching for transfers with found school: ${recruitingSchool}`);
+          try {
+            const transferResponse = await axios.get('/api/players/transfer-data', {
+              params: {
+                name: player.name,
+                school: recruitingSchool,
+                recruitingYear: recruitingData.classYear
+              }
+            });
+            const transfers = transferResponse.data.data || [];
+            if (transfers.length > 0) {
+              console.log('Found transfers after manual 247 search:', transfers.length);
+              setConnectTransferData(transfers);
+              alert(`Found ${selectedConnectPlayer.name} at ${recruitingData.school} (${recruitingData.classYear} class) with ${transfers.length} transfer(s)!`);
+            } else {
+              alert(`Found ${selectedConnectPlayer.name} at ${recruitingData.school} (${recruitingData.classYear} class)`);
+            }
+          } catch (transferError) {
+            console.warn('Transfer search after manual 247 failed:', transferError.message);
+            alert(`Found ${selectedConnectPlayer.name} at ${recruitingData.school} (${recruitingData.classYear} class)`);
+          }
+        } else {
+          alert(`Found ${selectedConnectPlayer.name} at ${recruitingData.school} (${recruitingData.classYear} class)`);
+        }
+      } else {
+        alert(`No recruiting data found for ${selectedConnectPlayer.name} at ${manualSchoolSearch}`);
+      }
+    } catch (error) {
+      console.error('Manual 247 search failed:', error);
+      alert('Search failed: ' + error.message);
+    } finally {
+      setSearching247(false);
+    }
+  };
+
+  // Save Connect to ESPN data - updates ESPN info, recruiting data, and transfers
   const handleSaveConnect = async (e) => {
     e.preventDefault();
     setConnectSaving(true);
 
     try {
-      // Only send the fields we want to update - explicitly NOT class_year
+      // Update player with ESPN data and recruiting info
       await axios.put(`/api/players/${id}`, {
         espn_id: connectData.espn_id || null,
         photo_url: connectData.photo_url || null,
         height: connectData.height || null,
         weight: connectData.weight || null,
         hometown: connectData.hometown || null,
-        state: connectData.state || null
+        state: connectData.state || null,
+        high_school: connectData.high_school || null,
+        recruiting_class_year: connectData.recruiting_class_year || null,
+        recruiting_stars: connectData.recruiting_stars || null,
+        recruiting_rating: connectData.recruiting_rating || null,
+        recruiting_ranking: connectData.recruiting_ranking || null,
+        original_commitment: connectData.original_commitment || null
         // NOTE: class_year, school, conference, status, draft info are NOT included
       });
+
+      // Save transfer history if we found any
+      if (connectTransferData.length > 0) {
+        for (const transfer of connectTransferData) {
+          try {
+            await axios.post('/api/players/transfers', {
+              player_id: parseInt(id),
+              from_school: transfer.fromSchool || transfer.from_school,
+              to_school: transfer.toSchool || transfer.to_school,
+              transfer_year: transfer.transferYear || transfer.transfer_year || transfer.season,
+              transfer_type: transfer.transferType || transfer.transfer_type || 'Portal'
+            });
+          } catch (transferError) {
+            console.warn('Failed to save transfer:', transferError.message);
+          }
+        }
+      }
 
       setShowConnectModal(false);
       setSelectedConnectPlayer(null);
@@ -662,10 +946,17 @@ function PlayerDetail() {
         height: '',
         weight: '',
         hometown: '',
-        state: ''
+        state: '',
+        high_school: '',
+        recruiting_class_year: null,
+        recruiting_stars: null,
+        recruiting_rating: null,
+        recruiting_ranking: null,
+        original_commitment: ''
       });
+      setConnectTransferData([]);
       fetchPlayerDetails();
-      alert('Player connected to ESPN successfully!');
+      alert('Player connected to ESPN successfully!' + (connectTransferData.length > 0 ? ` (${connectTransferData.length} transfers added)` : ''));
     } catch (error) {
       console.error('Error connecting player:', error);
       alert('Error connecting player: ' + (error.response?.data?.message || error.message));
@@ -685,19 +976,37 @@ function PlayerDetail() {
   return (
     <div className="player-detail">
       <div className="page-header">
-        <button onClick={() => navigate('/players')} className="btn btn-secondary">
-          ← Back to Players
-        </button>
-        <div className="header-actions">
-          {/* Connect to ESPN button - only show if espn_id is not set */}
-          {!player.espn_id && (
-            <button onClick={() => {
-              setConnectSearchQuery(player.name);
-              setShowConnectModal(true);
-            }} className="btn btn-info">
-              Connect to ESPN
+        <div className="header-left">
+          <button onClick={() => navigate('/players')} className="btn btn-secondary">
+            ← Back to Players
+          </button>
+          <div className="player-nav-arrows">
+            <button
+              onClick={() => adjacentPlayers.prev && navigate(`/players/${adjacentPlayers.prev}`)}
+              disabled={!adjacentPlayers.prev}
+              className="nav-arrow prev"
+              title="Previous player (←)"
+            >
+              ‹
             </button>
-          )}
+            <button
+              onClick={() => adjacentPlayers.next && navigate(`/players/${adjacentPlayers.next}`)}
+              disabled={!adjacentPlayers.next}
+              className="nav-arrow next"
+              title="Next player (→)"
+            >
+              ›
+            </button>
+          </div>
+        </div>
+        <div className="header-actions">
+          {/* Connect/Update ESPN button - show for all players */}
+          <button onClick={() => {
+            setConnectSearchQuery(player.name);
+            setShowConnectModal(true);
+          }} className="btn btn-info">
+            {player.espn_id ? 'Update ESPN Data' : 'Connect to ESPN'}
+          </button>
           {player.player_type === 'high_school' && (
             <button onClick={() => {
               setUpgradeSearchQuery(player.name);
@@ -756,7 +1065,7 @@ function PlayerDetail() {
                       style={{ width: '20px', height: '20px', verticalAlign: 'middle', marginRight: '5px' }}
                     />
                   )}
-                  {player.school} ({player.conference})
+                  {schoolData?.school || player.school} ({schoolData?.conference || player.conference})
                 </>
               )}
             </p>
@@ -827,9 +1136,9 @@ function PlayerDetail() {
             <h3>Assigned Agents</h3>
             <div className="agents-list">
               {player.agents.map(agent => (
-                <span key={agent.id} className="agent-badge">
+                <Link key={agent.id} to={`/agents/${agent.id}`} className="agent-badge agent-link">
                   {agent.name}
-                </span>
+                </Link>
               ))}
             </div>
           </div>
@@ -1368,6 +1677,111 @@ function PlayerDetail() {
                       />
                     </div>
                   </div>
+
+                  {/* Recruiting Data Section - only for college players */}
+                  {player.player_type !== 'veteran' && (connectData.high_school || connectData.recruiting_stars || connectData.original_commitment) && (
+                    <>
+                      <h4 style={{ marginTop: '1rem' }}>Recruiting Data</h4>
+                      <div className="form-row">
+                        <div className="form-group">
+                          <label>High School</label>
+                          <input
+                            type="text"
+                            value={connectData.high_school || ''}
+                            onChange={(e) => setConnectData({ ...connectData, high_school: e.target.value })}
+                            placeholder="High School"
+                          />
+                        </div>
+                        <div className="form-group">
+                          <label>Original Commitment</label>
+                          <input
+                            type="text"
+                            value={connectData.original_commitment || ''}
+                            onChange={(e) => setConnectData({ ...connectData, original_commitment: e.target.value })}
+                            placeholder="Original school committed to"
+                          />
+                        </div>
+                      </div>
+                      <div className="form-row">
+                        <div className="form-group">
+                          <label>Recruiting Stars</label>
+                          <input
+                            type="number"
+                            value={connectData.recruiting_stars || ''}
+                            onChange={(e) => setConnectData({ ...connectData, recruiting_stars: e.target.value ? parseInt(e.target.value) : null })}
+                            placeholder="1-5"
+                            min="1"
+                            max="5"
+                          />
+                        </div>
+                        <div className="form-group">
+                          <label>Recruiting Rating</label>
+                          <input
+                            type="text"
+                            value={connectData.recruiting_rating || ''}
+                            onChange={(e) => setConnectData({ ...connectData, recruiting_rating: e.target.value ? parseFloat(e.target.value) : null })}
+                            placeholder="e.g., 0.9823"
+                          />
+                        </div>
+                        <div className="form-group">
+                          <label>National Ranking</label>
+                          <input
+                            type="number"
+                            value={connectData.recruiting_ranking || ''}
+                            onChange={(e) => setConnectData({ ...connectData, recruiting_ranking: e.target.value ? parseInt(e.target.value) : null })}
+                            placeholder="e.g., 45"
+                          />
+                        </div>
+                      </div>
+                    </>
+                  )}
+
+                  {/* Manual 247Sports Search - for transfer players whose original school isn't auto-detected */}
+                  {player.player_type !== 'veteran' && !connectData.recruiting_stars && (
+                    <div style={{ marginTop: '1rem', padding: '0.75rem', background: '#fff3cd', borderRadius: '4px', border: '1px solid #ffc107' }}>
+                      <label style={{ fontWeight: 'bold', fontSize: '0.9rem', color: '#856404' }}>
+                        No recruiting data found? Try searching a different school:
+                      </label>
+                      <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+                        <input
+                          type="text"
+                          value={manualSchoolSearch}
+                          onChange={(e) => setManualSchoolSearch(e.target.value)}
+                          placeholder="e.g., Ohio State, Alabama..."
+                          style={{ flex: 1, padding: '0.5rem' }}
+                        />
+                        <button
+                          type="button"
+                          onClick={handleManual247Search}
+                          disabled={searching247 || !manualSchoolSearch.trim()}
+                          className="btn btn-warning"
+                          style={{ whiteSpace: 'nowrap' }}
+                        >
+                          {searching247 ? 'Searching...' : 'Search 247'}
+                        </button>
+                      </div>
+                      <small style={{ color: '#856404', marginTop: '0.25rem', display: 'block' }}>
+                        For transfer players, enter their original college (where they were recruited out of high school)
+                      </small>
+                    </div>
+                  )}
+
+                  {/* Transfer History Section */}
+                  {connectTransferData.length > 0 && (
+                    <>
+                      <h4 style={{ marginTop: '1rem' }}>Transfer History ({connectTransferData.length} found)</h4>
+                      <div className="transfer-list-preview">
+                        {connectTransferData.map((transfer, idx) => (
+                          <div key={idx} className="transfer-item-preview">
+                            <span>{transfer.fromSchool || transfer.from_school || '?'}</span>
+                            <span className="transfer-arrow">→</span>
+                            <span>{transfer.toSchool || transfer.to_school}</span>
+                            <span className="transfer-year">({transfer.transferYear || transfer.transfer_year || transfer.season})</span>
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  )}
                 </div>
 
                 <div className="form-actions">

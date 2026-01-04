@@ -6,6 +6,7 @@ import '../styles/PlayersList.css';
 function PlayersList() {
   const [players, setPlayers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [sortBy, setSortBy] = useState('lastName'); // 'lastName' or 'firstName'
   const [filters, setFilters] = useState({
     search: '',
     status: '',
@@ -24,7 +25,7 @@ function PlayersList() {
     fetchPlayers();
     fetchFilterOptions();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filters]);
+  }, [filters, sortBy]);
 
   const fetchPlayers = async () => {
     try {
@@ -32,6 +33,7 @@ function PlayersList() {
       Object.keys(filters).forEach(key => {
         if (filters[key]) params.append(key, filters[key]);
       });
+      params.append('sortBy', sortBy);
 
       const response = await axios.get(`/api/players?${params}`);
       setPlayers(response.data.data);
@@ -45,20 +47,13 @@ function PlayersList() {
   const fetchFilterOptions = async () => {
     try {
       const analyticsRes = await axios.get('/api/players/analytics');
-      const playersRes = await axios.get('/api/players');
 
       const analytics = analyticsRes.data.data;
       setPositions(analytics.byPosition?.map(p => p.position) || []);
       setConferences(analytics.byConference?.map(c => c.conference) || []);
 
-      // Extract unique years from players and sort descending
-      const allPlayers = playersRes.data.data || [];
-      const uniqueYears = [...new Set(
-        allPlayers
-          .map(p => p.eligibility_year)
-          .filter(year => year != null)
-      )].sort((a, b) => b - a);
-      setYears(uniqueYears);
+      // Use recruiting years from analytics (from player_recruiting_cycles table)
+      setYears(analytics.recruitingYears || []);
     } catch (error) {
       console.error('Error fetching filter options:', error);
     }
@@ -148,13 +143,29 @@ function PlayersList() {
         >
           <option value="">All Years</option>
           {years.map(year => (
-            <option key={year} value={year}>{year}</option>
+            <option key={year} value={year}>{year - 1} - {year}</option>
           ))}
         </select>
 
         <button onClick={clearFilters} className="btn btn-secondary">
           Clear Filters
         </button>
+
+        <div className="sort-toggle">
+          <span className="sort-label">Sort by:</span>
+          <button
+            className={`sort-btn ${sortBy === 'lastName' ? 'active' : ''}`}
+            onClick={() => setSortBy('lastName')}
+          >
+            Last Name
+          </button>
+          <button
+            className={`sort-btn ${sortBy === 'firstName' ? 'active' : ''}`}
+            onClick={() => setSortBy('firstName')}
+          >
+            First Name
+          </button>
+        </div>
       </div>
 
       <div className="players-count">

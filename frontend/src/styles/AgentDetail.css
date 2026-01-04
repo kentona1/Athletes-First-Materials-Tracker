@@ -1,0 +1,286 @@
+.agent-detail {
+  padding: 1rem;
+}
+
+/* Agent Header */
+.agent-header {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 2rem;
+  margin-bottom: 2rem;
+  background: white;
+  padding: 2rem;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.agent-profile {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.agent-photo {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.agent-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.photo-placeholder {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 2.5rem;
+  font-weight: 700;
+}
+
+.agent-info h1 {
+  font-size: 2rem;
+  margin: 0 0 0.5rem 0;
+  color: #333;
+}
+
+.agent-location {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #666;
+  font-size: 1.1rem;
+  margin: 0;
+}
+
+.location-icon {
+  font-size: 1.2rem;
+}
+
+/* Contact Card */
+.contact-card {
+  background: #f8f9fa;
+  padding: 1.5rem;
+  border-radius: 8px;
+  min-width: 280px;
+}
+
+.contact-card h3 {
+  margin: 0 0 1rem 0;
+  font-size: 1rem;
+  color: #666;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.contact-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.contact-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.contact-icon {
+  font-size: 1.1rem;
+  width: 24px;
+  text-align: center;
+}
+
+.contact-item a {
+  color: #007bff;
+  text-decoration: none;
+}
+
+.contact-item a:hover {
+  text-decoration: underline;
+}
+
+.no-contact {
+  color: #999;
+  font-style: italic;
+  margin: 0;
+}
+
+/* Stats Summary */
+.stats-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.stats-summary .stat-card {
+  background: white;
+  padding: 1.5rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  text-align: center;
+  border-top: 4px solid #007bff;
+}
+
+.stats-summary .stat-card.total {
+  border-top-color: #007bff;
+}
+
+.stats-summary .stat-card.signed {
+  border-top-color: #28a745;
+}
+
+.stats-summary .stat-card.not-signed {
+  border-top-color: #dc3545;
+}
+
+.stats-summary .stat-card.active {
+  border-top-color: #17a2b8;
+}
+
+.stats-summary .stat-card.conversion {
+  border-top-color: #6f42c1;
+}
+
+.stats-summary .stat-card.materials {
+  border-top-color: #fd7e14;
+}
+
+.stats-summary .stat-card h3 {
+  font-size: 0.8rem;
+  color: #666;
+  margin: 0 0 0.5rem 0;
+  text-transform: uppercase;
+}
+
+.stats-summary .stat-number {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #333;
+  margin: 0;
+}
+
+/* Analytics Section */
+.analytics-section {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.chart-card {
+  background: white;
+  padding: 1.5rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.chart-card h3 {
+  margin: 0 0 1rem 0;
+  font-size: 1.1rem;
+  color: #333;
+}
+
+/* Players Section */
+.players-section {
+  background: white;
+  padding: 1.5rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.players-section h3 {
+  margin: 0 0 1rem 0;
+  font-size: 1.25rem;
+  color: #333;
+}
+
+.players-table {
+  overflow-x: auto;
+}
+
+.players-table table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.players-table th,
+.players-table td {
+  padding: 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid #eee;
+}
+
+.players-table th {
+  background: #f8f9fa;
+  font-weight: 600;
+  color: #333;
+}
+
+.players-table tr:hover {
+  background: #f8f9fa;
+}
+
+.player-link {
+  color: #007bff;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.player-link:hover {
+  text-decoration: underline;
+}
+
+/* Status Badges */
+.status-badge {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.status-badge.signed {
+  background: #d4edda;
+  color: #155724;
+}
+
+.status-badge.not-signed {
+  background: #f8d7da;
+  color: #721c24;
+}
+
+.status-badge.active,
+.status-badge.returned-to-school {
+  background: #d1ecf1;
+  color: #0c5460;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .agent-header {
+    grid-template-columns: 1fr;
+  }
+
+  .agent-profile {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .contact-card {
+    min-width: auto;
+  }
+
+  .analytics-section {
+    grid-template-columns: 1fr;
+  }
+}

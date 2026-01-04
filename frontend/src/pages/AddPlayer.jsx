@@ -87,6 +87,8 @@ function AddPlayer() {
     position: '',
     nfl_team: '',
     college: '',
+    hometown: '',
+    state: '',
     height: '',
     weight: '',
     years_pro: '',
@@ -247,11 +249,22 @@ function AddPlayer() {
       const detailsResponse = await axios.get(`/api/players/nfl-details/${espnId}`);
       const details = detailsResponse.data.data;
 
+      // Parse birthPlace into hometown and state (format: "City, State")
+      let hometown = '';
+      let state = '';
+      if (details.birthPlace) {
+        const parts = details.birthPlace.split(',').map(p => p.trim());
+        hometown = parts[0] || '';
+        state = parts[1] || '';
+      }
+
       setVeteranFormData({
         name: details.name || player.name || '',
         position: details.position || player.position || '',
         nfl_team: details.team || player.team || '',
         college: details.college || '',
+        hometown: hometown,
+        state: state,
         height: details.height || '',
         weight: details.weight ? details.weight.replace(' lbs', '') : '',
         years_pro: details.experience || '',
@@ -269,6 +282,8 @@ function AddPlayer() {
         position: player.position || '',
         nfl_team: player.team || '',
         college: '',
+        hometown: '',
+        state: '',
         height: '',
         weight: '',
         years_pro: '',
@@ -633,6 +648,8 @@ function AddPlayer() {
         position: veteranFormData.position,
         school: veteranFormData.college, // Store college as school
         nfl_team: veteranFormData.nfl_team,
+        hometown: veteranFormData.hometown,
+        state: veteranFormData.state,
         height: veteranFormData.height,
         weight: veteranFormData.weight,
         years_pro: veteranFormData.years_pro,
@@ -1294,6 +1311,30 @@ function AddPlayer() {
               onChange={(e) => setVeteranFormData({ ...veteranFormData, years_pro: e.target.value })}
               placeholder="e.g., 3"
               min="0"
+            />
+          </div>
+        </div>
+
+        <div className="form-row">
+          <div className="form-group">
+            <label>Hometown</label>
+            <input
+              type="text"
+              name="hometown"
+              value={veteranFormData.hometown}
+              onChange={(e) => setVeteranFormData({ ...veteranFormData, hometown: e.target.value })}
+              placeholder="City"
+            />
+          </div>
+
+          <div className="form-group">
+            <label>State</label>
+            <input
+              type="text"
+              name="state"
+              value={veteranFormData.state}
+              onChange={(e) => setVeteranFormData({ ...veteranFormData, state: e.target.value })}
+              placeholder="State"
             />
           </div>
         </div>

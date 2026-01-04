@@ -2,7 +2,8 @@ const { parse } = require('csv-parse/sync');
 const db = require('../database/db');
 const axios = require('axios');
 
-// Eligibility mapping
+// Eligibility mapping - stores display-friendly class year (no numbers)
+// Numbers are only used in CSV for sorting, not stored in database
 const eligibilityMap = {
   '0': { class_year: 'High School', player_type: 'high_school' },
   '1': { class_year: 'Freshman', player_type: 'college' },
@@ -13,19 +14,33 @@ const eligibilityMap = {
   '6': { class_year: 'RS-Junior', player_type: 'college' },
   '7': { class_year: 'Senior', player_type: 'college' },
   '8': { class_year: 'Fifth Year', player_type: 'college' },
-  '9': { class_year: 'Sixth Year', player_type: 'college' },
-  '10': { class_year: null, player_type: 'veteran' }
+  '9': { class_year: 'Sixth Year (Grad)', player_type: 'college' },
+  '10': { class_year: 'Veteran', player_type: 'veteran' }
 };
 
-// Parse "Last, First" name format to "First Last"
+// Parse "Last, First" name format
+// Returns { fullName: "First Last", firstName: "First", lastName: "Last" }
 function parseName(nameStr) {
-  if (!nameStr) return '';
+  if (!nameStr) return { fullName: '', firstName: '', lastName: '' };
   const cleaned = nameStr.replace(/"/g, '').trim();
   const parts = cleaned.split(',').map(p => p.trim());
   if (parts.length >= 2) {
-    return `${parts[1]} ${parts[0]}`;
+    return {
+      fullName: `${parts[1]} ${parts[0]}`,
+      firstName: parts[1],
+      lastName: parts[0]
+    };
   }
-  return cleaned;
+  // No comma - assume it's already "First Last" format
+  const spaceParts = cleaned.split(' ');
+  if (spaceParts.length >= 2) {
+    return {
+      fullName: cleaned,
+      firstName: spaceParts[0],
+      lastName: spaceParts.slice(1).join(' ')
+    };
+  }
+  return { fullName: cleaned, firstName: '', lastName: cleaned };
 }
 
 // Parse eligibility string like "5 - Junior" to get the number
@@ -35,13 +50,53 @@ function parseEligibility(eligStr) {
   return match ? match[1] : null;
 }
 
+// Parse class year string to get numeric value for comparison
+// "Fifth Year" → 8, "Veteran" → 10, etc.
+// Higher number = further along in career = more recent data
+function parseClassYearNumber(classYearStr) {
+  if (!classYearStr) return 0;
+
+  const lower = classYearStr.toLowerCase();
+
+  // Text-based mapping (order matters for substrings like "junior" in "rs-junior")
+  if (lower.includes('veteran')) return 10;
+  if (lower.includes('sixth') || lower.includes('grad')) return 9;
+  if (lower.includes('fifth')) return 8;
+  if (lower === 'senior') return 7;
+  if (lower === 'rs-junior') return 6;
+  if (lower === 'junior') return 5;
+  if (lower === 'rs-sophomore') return 4;
+  if (lower === 'sophomore') return 3;
+  if (lower === 'rs-freshman') return 2;
+  if (lower === 'freshman') return 1;
+  if (lower.includes('high school')) return 0;
+
+  // Fallback: try to extract leading number for any legacy data
+  const numMatch = classYearStr.match(/^(\d+)/);
+  if (numMatch) return parseInt(numMatch[1], 10);
+
+  return 0;
+}
+
 // Parse COMMIT column to outcome status
+// Handles: "Yes", "No", "School", "School (Yes)", "School (No)"
+// Final categories: Signed, Not Signed, Returned to School
 function parseCommitToStatus(commitStr) {
   if (!commitStr) return 'Active';
   const lower = commitStr.toLowerCase().trim();
+
+  // Direct commitment statuses
   if (lower === 'yes') return 'Signed';
   if (lower === 'no') return 'Not Signed';
-  if (lower.includes('school')) return 'Returned to School';
+
+  // School variations with retrospective outcomes
+  // "School (Yes)" = returned to school that year, eventually signed with us
+  if (lower === 'school (yes)') return 'Signed';
+  // "School (No)" = returned to school that year, didn't sign with us (entered draft elsewhere)
+  if (lower === 'school (no)') return 'Not Signed';
+  // "School" = returned to school, still active (hasn't entered draft yet)
+  if (lower === 'school') return 'Returned to School';
+
   return 'Active';
 }
 
@@ -196,7 +251,8 @@ class ImportController {
       // Process and preview records
       const preview = records.slice(0, 50).map((row, index) => {
         const nameCol = Object.keys(row).find(k => k.includes('NAME'));
-        const name = parseName(row[nameCol]);
+        const nameData = parseName(row[nameCol]);
+        const name = nameData.fullName;
 
         const eligCol = Object.keys(row).find(k => k.includes('ELIGIBILITY'));
         const eligNum = parseEligibility(row[eligCol]);
@@ -305,7 +361,10 @@ class ImportController {
       for (const row of records) {
         try {
           const nameCol = Object.keys(row).find(k => k.includes('NAME'));
-          const name = parseName(row[nameCol]);
+          const nameData = parseName(row[nameCol]);
+          const name = nameData.fullName;
+          const firstName = nameData.firstName;
+          const lastName = nameData.lastName;
 
           if (!name) {
             skipped++;
@@ -337,32 +396,30 @@ class ImportController {
 
           // Check if player already exists (by name)
           let existingPlayer = await db.get(
-            'SELECT id, eligibility_year FROM players WHERE LOWER(name) = LOWER(?)',
+            'SELECT id, class_year, eligibility_year FROM players WHERE LOWER(name) = LOWER(?)',
             [name]
           );
 
           let playerId;
+          let isNewerData = false;
 
           if (existingPlayer) {
-            // Player exists - check if we should update or skip
-            // If importing from an older year than existing data, add materials but don't update player
-            const existingYear = existingPlayer.eligibility_year;
+            playerId = existingPlayer.id;
 
-            if (recruitingYear && existingYear && recruitingYear < existingYear) {
-              // Older data - just add materials
-              playerId = existingPlayer.id;
-              // Don't update player info
-            } else {
-              // Newer or same year data - update player info
-              playerId = existingPlayer.id;
+            // Compare class year numbers to determine if importing newer or older data
+            const existingClassYearNum = parseClassYearNumber(existingPlayer.class_year);
+            const incomingClassYearNum = parseClassYearNumber(eligInfo.class_year);
 
-              // Always update player data (status, draft info, etc.)
+            // Higher number = more recent in player's career
+            isNewerData = incomingClassYearNum >= existingClassYearNum;
+
+            if (isNewerData) {
+              // Newer or same year data - update player info (school, status, class_year, draft info)
               await db.run(`
                 UPDATE players SET
-                  position = COALESCE(?, position),
                   school = COALESCE(?, school),
                   conference = COALESCE(?, conference),
-                  class_year = COALESCE(?, class_year),
+                  class_year = ?,
                   player_type = COALESCE(?, player_type),
                   status = CASE WHEN ? IN ('Signed', 'Not Signed', 'Returned to School') THEN ? ELSE status END,
                   draft_round = COALESCE(?, draft_round),
@@ -372,10 +429,9 @@ class ImportController {
                   updated_at = CURRENT_TIMESTAMP
                 WHERE id = ?
               `, [
-                position || null,
                 eligInfo.player_type === 'veteran' ? null : school,
                 conference || null,
-                eligInfo.class_year,
+                eligInfo.class_year,  // Always use newer class year
                 eligInfo.player_type,
                 status, status,
                 draftRound,
@@ -385,16 +441,28 @@ class ImportController {
                 playerId
               ]);
               updated++;
+            } else {
+              // Older data - DON'T update player fields (school, status, class_year)
+              // Only material events will be added below
+              // But DO update position if it was empty (position rarely changes)
+              await db.run(`
+                UPDATE players SET
+                  position = CASE WHEN position IS NULL OR position = '' THEN ? ELSE position END,
+                  updated_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+              `, [position || null, playerId]);
             }
           } else {
             // New player - insert
             const result = await db.run(
               `INSERT INTO players (
-                name, position, school, conference, class_year, player_type,
+                name, first_name, last_name, position, school, conference, class_year, player_type,
                 status, draft_round, draft_year, nfl_team, eligibility_year
-              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
               [
                 name,
+                firstName,
+                lastName,
                 position,
                 eligInfo.player_type === 'veteran' ? null : school,
                 conference || null,
@@ -411,16 +479,27 @@ class ImportController {
             imported++;
           }
 
-          // Assign agent if found
+          // Assign agent - create if doesn't exist
           const agentName = row[agentCol]?.trim();
           if (agentName && playerId) {
-            const agentId = agentMap[agentName.toLowerCase()] || agentMap[agentName.split('/')[0].trim().toLowerCase()];
-            if (agentId) {
-              await db.run(
-                'INSERT OR IGNORE INTO player_agents (player_id, agent_id) VALUES (?, ?)',
-                [playerId, agentId]
-              );
+            // Try to find existing agent
+            let agentId = agentMap[agentName.toLowerCase()] || agentMap[agentName.split('/')[0].trim().toLowerCase()];
+
+            // If agent doesn't exist, create them (CSV has last name only)
+            if (!agentId) {
+              const newAgent = await db.run(`
+                INSERT INTO agents (name, last_name, first_name, active)
+                VALUES (?, ?, NULL, 1)
+              `, [agentName, agentName]);
+              agentId = newAgent.id;
+              // Add to map for future rows in this import
+              agentMap[agentName.toLowerCase()] = agentId;
             }
+
+            await db.run(
+              'INSERT OR IGNORE INTO player_agents (player_id, agent_id) VALUES (?, ?)',
+              [playerId, agentId]
+            );
           }
 
           // Create player outcome if we have draft/status info
@@ -436,29 +515,74 @@ class ImportController {
             `, [playerId, status, draftRound, draftYear]);
           }
 
+          // Track recruiting cycles this player was involved in, with status per cycle
+          // Determine the status for THIS recruiting cycle (may differ from final status)
+          const commitValue = row[commitCol]?.toLowerCase().trim() || '';
+          let cycleStatus = status; // Default to the parsed status
+
+          // Special handling for "School (Yes)" and "School (No)"
+          // For the CSV's recruiting year, they "Returned to School" that year
+          if (commitValue === 'school (yes)' || commitValue === 'school (no)') {
+            cycleStatus = 'Returned to School';
+          }
+
+          if (playerId && recruitingYear) {
+            // Add to the recruiting cycle from this CSV with the cycle-specific status
+            await db.run(
+              `INSERT INTO player_recruiting_cycles (player_id, recruiting_year, status)
+               VALUES (?, ?, ?)
+               ON CONFLICT(player_id, recruiting_year) DO UPDATE SET status = excluded.status`,
+              [playerId, recruitingYear, cycleStatus]
+            );
+          }
+
+          // If player was signed and has a draft year, also add to that draft year's cycle
+          // For "School (Yes)" cases - they're "Signed" in the draft year cycle
+          if (playerId && status === 'Signed' && draftYear && draftYear !== recruitingYear) {
+            await db.run(
+              `INSERT INTO player_recruiting_cycles (player_id, recruiting_year, status)
+               VALUES (?, ?, 'Signed')
+               ON CONFLICT(player_id, recruiting_year) DO UPDATE SET status = 'Signed'`,
+              [playerId, draftYear]
+            );
+          }
+
           // Parse and import materials
           const materialEvents = parseMaterials(row[materialsCol]);
 
           for (const event of materialEvents) {
             if (!event.materials || event.materials.length === 0) continue;
 
-            // Create material event
-            const eventResult = await db.run(`
-              INSERT INTO material_events (player_id, event_date, delivery_method, event_number, copies)
-              VALUES (?, ?, ?,
-                (SELECT COALESCE(MAX(event_number), 0) + 1 FROM material_events
-                 WHERE player_id = ? AND delivery_method = ?),
-                ?)
-            `, [
-              playerId,
-              event.date,
-              event.delivery_method || 'Other',
-              playerId,
-              event.delivery_method || 'Other',
-              event.copies
-            ]);
+            // Check if a material event with this exact date already exists for this player
+            const existingEvent = await db.get(`
+              SELECT id FROM material_events
+              WHERE player_id = ? AND event_date = ?
+            `, [playerId, event.date]);
 
-            const eventId = eventResult.id;
+            let eventId;
+
+            if (existingEvent) {
+              // Event on this date already exists - skip creating new event
+              // but we'll still check for new materials below
+              eventId = existingEvent.id;
+            } else {
+              // Create new material event
+              const eventResult = await db.run(`
+                INSERT INTO material_events (player_id, event_date, delivery_method, event_number, copies)
+                VALUES (?, ?, ?,
+                  (SELECT COALESCE(MAX(event_number), 0) + 1 FROM material_events
+                   WHERE player_id = ? AND delivery_method = ?),
+                  ?)
+              `, [
+                playerId,
+                event.date,
+                event.delivery_method || 'Other',
+                playerId,
+                event.delivery_method || 'Other',
+                event.copies
+              ]);
+              eventId = eventResult.id;
+            }
 
             // Get agent for this player
             const playerAgent = await db.get(
@@ -497,21 +621,30 @@ class ImportController {
               }
 
               if (materialTypeId) {
-                await db.run(`
-                  INSERT INTO player_materials (
-                    player_id, material_type_id, agent_id, title,
-                    delivery_method, delivery_date, event_id
-                  ) VALUES (?, ?, ?, ?, ?, ?, ?)
-                `, [
-                  playerId,
-                  materialTypeId,
-                  playerAgent?.agent_id || null,
-                  materialName,
-                  event.delivery_method,
-                  event.date,
-                  eventId
-                ]);
-                materialsAdded++;
+                // Check if this exact material already exists for this event
+                const existingMaterial = await db.get(`
+                  SELECT id FROM player_materials
+                  WHERE player_id = ? AND event_id = ? AND material_type_id = ?
+                `, [playerId, eventId, materialTypeId]);
+
+                if (!existingMaterial) {
+                  await db.run(`
+                    INSERT INTO player_materials (
+                      player_id, material_type_id, agent_id, title,
+                      delivery_method, delivery_date, event_id
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                  `, [
+                    playerId,
+                    materialTypeId,
+                    playerAgent?.agent_id || null,
+                    materialName,
+                    event.delivery_method,
+                    event.date,
+                    eventId
+                  ]);
+                  materialsAdded++;
+                }
+                // If material already exists, skip (no duplicate)
               }
             }
           }
@@ -542,18 +675,18 @@ class ImportController {
     }
   }
 
-  // Batch import multiple files (newest to oldest)
+  // Batch import multiple files (oldest to newest - recommended order)
   async batchImport(req, res) {
     try {
       if (!req.files || req.files.length === 0) {
         return res.status(400).json({ success: false, error: 'No files uploaded' });
       }
 
-      // Sort files by year (newest first)
+      // Sort files by year (oldest first - recommended import order)
       const sortedFiles = [...req.files].sort((a, b) => {
         const yearA = extractYearFromFilename(a.originalname) || 0;
         const yearB = extractYearFromFilename(b.originalname) || 0;
-        return yearB - yearA; // Descending
+        return yearA - yearB; // Ascending (oldest first)
       });
 
       const results = [];
@@ -574,7 +707,7 @@ class ImportController {
 
       res.json({
         success: true,
-        message: 'Files will be processed in order (newest to oldest)',
+        message: 'Files will be processed in order (oldest to newest)',
         files: results
       });
 

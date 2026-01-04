@@ -25,20 +25,12 @@
   border-left-color: #28a745;
 }
 
-.stat-card.missed {
+.stat-card.not-signed {
   border-left-color: #dc3545;
 }
 
-.stat-card.walked {
-  border-left-color: #fd7e14;
-}
-
-.stat-card.returned {
-  border-left-color: #6610f2;
-}
-
-.stat-card.no-meeting {
-  border-left-color: #6c757d;
+.stat-card.active {
+  border-left-color: #17a2b8;
 }
 
 .stat-card h3 {

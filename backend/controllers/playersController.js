@@ -1,40 +1,70 @@
 const db = require('../database/db');
 const axios = require('axios');
+const cheerio = require('cheerio');
 
 class PlayersController {
   // Get all players with optional filters
   async getAllPlayers(req, res) {
     try {
-      const { 
-        status, 
-        position, 
-        school, 
-        conference, 
-        agent, 
+      const {
+        status,
+        position,
+        school,
+        conference,
+        agent,
         year,
-        search 
+        search,
+        sortBy,  // 'lastName' or 'firstName' (default: lastName)
+        limit
       } = req.query;
-
-      let sql = `
-        SELECT
-          p.*,
-          GROUP_CONCAT(DISTINCT a.name) as agents,
-          COUNT(DISTINCT pm.id) as materials_count,
-          COALESCE(po.status, p.status) as outcome_status,
-          COALESCE(po.draft_round, p.draft_round) as draft_round,
-          COALESCE(po.draft_year, p.draft_year) as draft_year
-        FROM players p
-        LEFT JOIN player_agents pa ON p.id = pa.player_id
-        LEFT JOIN agents a ON pa.agent_id = a.id
-        LEFT JOIN player_materials pm ON p.id = pm.player_id
-        LEFT JOIN player_outcomes po ON p.id = po.player_id
-        WHERE 1=1
-      `;
 
       const params = [];
 
+      // When filtering by year, use cycle-specific status; otherwise use final status
+      let sql;
+      if (year) {
+        sql = `
+          SELECT
+            p.*,
+            GROUP_CONCAT(DISTINCT a.name) as agents,
+            COUNT(DISTINCT pm.id) as materials_count,
+            prc.status as outcome_status,
+            COALESCE(po.draft_round, p.draft_round) as draft_round,
+            COALESCE(po.draft_year, p.draft_year) as draft_year
+          FROM players p
+          INNER JOIN player_recruiting_cycles prc ON p.id = prc.player_id AND prc.recruiting_year = ?
+          LEFT JOIN player_agents pa ON p.id = pa.player_id
+          LEFT JOIN agents a ON pa.agent_id = a.id
+          LEFT JOIN player_materials pm ON p.id = pm.player_id
+          LEFT JOIN player_outcomes po ON p.id = po.player_id
+          WHERE 1=1
+        `;
+        params.push(year);
+      } else {
+        sql = `
+          SELECT
+            p.*,
+            GROUP_CONCAT(DISTINCT a.name) as agents,
+            COUNT(DISTINCT pm.id) as materials_count,
+            COALESCE(po.status, p.status) as outcome_status,
+            COALESCE(po.draft_round, p.draft_round) as draft_round,
+            COALESCE(po.draft_year, p.draft_year) as draft_year
+          FROM players p
+          LEFT JOIN player_agents pa ON p.id = pa.player_id
+          LEFT JOIN agents a ON pa.agent_id = a.id
+          LEFT JOIN player_materials pm ON p.id = pm.player_id
+          LEFT JOIN player_outcomes po ON p.id = po.player_id
+          WHERE 1=1
+        `;
+      }
+
       if (status) {
-        sql += ' AND p.status = ?';
+        if (year) {
+          // Filter by cycle-specific status
+          sql += ' AND prc.status = ?';
+        } else {
+          sql += ' AND COALESCE(po.status, p.status) = ?';
+        }
         params.push(status);
       }
 
@@ -53,17 +83,19 @@ class PlayersController {
         params.push(conference);
       }
 
-      if (year) {
-        sql += ' AND p.eligibility_year = ?';
-        params.push(year);
-      }
-
       if (search) {
         sql += ' AND p.name LIKE ?';
         params.push(`%${search}%`);
       }
 
-      sql += ' GROUP BY p.id ORDER BY p.name';
+      // Sort by last name (default) or first name
+      const orderColumn = sortBy === 'firstName' ? 'p.first_name' : 'p.last_name';
+      sql += ` GROUP BY p.id ORDER BY ${orderColumn}, p.name`;
+
+      // Apply limit if specified
+      if (limit && !isNaN(parseInt(limit))) {
+        sql += ` LIMIT ${parseInt(limit)}`;
+      }
 
       const players = await db.query(sql, params);
       res.json({ success: true, data: players });
@@ -136,6 +168,13 @@ class PlayersController {
         ORDER BY transfer_year DESC
       `, [id]);
 
+      // Get recruiting cycles this player is associated with
+      const recruitingCycles = await db.query(`
+        SELECT recruiting_year FROM player_recruiting_cycles
+        WHERE player_id = ?
+        ORDER BY recruiting_year DESC
+      `, [id]);
+
       res.json({
         success: true,
         data: {
@@ -144,7 +183,8 @@ class PlayersController {
           materials,
           contacts,
           outcome,
-          transfers
+          transfers,
+          recruiting_cycles: recruitingCycles.map(r => r.recruiting_year)
         }
       });
     } catch (error) {
@@ -601,45 +641,89 @@ class PlayersController {
     try {
       const { year } = req.query;
 
-      // Overall stats
-      const overallStats = await db.get(`
-        SELECT 
-          COUNT(*) as total_players,
-          COUNT(CASE WHEN po.status = 'Signed' THEN 1 END) as signed,
-          COUNT(CASE WHEN po.status = 'Missed' THEN 1 END) as missed,
-          COUNT(CASE WHEN po.status = 'Walked Away' THEN 1 END) as walked_away,
-          COUNT(CASE WHEN po.status = 'Returned to School' THEN 1 END) as returned,
-          COUNT(CASE WHEN po.status = 'No Meeting' THEN 1 END) as no_meeting
-        FROM players p
-        LEFT JOIN player_outcomes po ON p.id = po.player_id
-        ${year ? 'WHERE p.eligibility_year = ?' : ''}
-      `, year ? [year] : []);
+      // Get available recruiting years
+      const recruitingYears = await db.query(`
+        SELECT DISTINCT recruiting_year
+        FROM player_recruiting_cycles
+        ORDER BY recruiting_year DESC
+      `);
+
+      // Overall stats (consolidated: Signed, Not Signed, Returned to School)
+      // Use cycle-specific status when filtering by year
+      let overallStats;
+      if (year) {
+        overallStats = await db.get(`
+          SELECT
+            COUNT(*) as total_players,
+            COUNT(CASE WHEN prc.status = 'Signed' THEN 1 END) as signed,
+            COUNT(CASE WHEN prc.status IN ('Not Signed', 'Missed', 'Walked Away', 'No Meeting') THEN 1 END) as not_signed,
+            COUNT(CASE WHEN prc.status = 'Returned to School' THEN 1 END) as returned
+          FROM players p
+          INNER JOIN player_recruiting_cycles prc ON p.id = prc.player_id AND prc.recruiting_year = ?
+        `, [year]);
+      } else {
+        overallStats = await db.get(`
+          SELECT
+            COUNT(*) as total_players,
+            COUNT(CASE WHEN po.status = 'Signed' THEN 1 END) as signed,
+            COUNT(CASE WHEN po.status IN ('Not Signed', 'Missed', 'Walked Away', 'No Meeting') THEN 1 END) as not_signed,
+            COUNT(CASE WHEN po.status = 'Returned to School' THEN 1 END) as returned
+          FROM players p
+          LEFT JOIN player_outcomes po ON p.id = po.player_id
+        `);
+      }
 
       // By position
-      const byPosition = await db.query(`
-        SELECT 
-          p.position,
-          COUNT(*) as count,
-          COUNT(CASE WHEN po.status = 'Signed' THEN 1 END) as signed
-        FROM players p
-        LEFT JOIN player_outcomes po ON p.id = po.player_id
-        ${year ? 'WHERE p.eligibility_year = ?' : ''}
-        GROUP BY p.position
-        ORDER BY count DESC
-      `, year ? [year] : []);
+      let byPosition;
+      if (year) {
+        byPosition = await db.query(`
+          SELECT
+            p.position,
+            COUNT(*) as count,
+            COUNT(CASE WHEN prc.status = 'Signed' THEN 1 END) as signed
+          FROM players p
+          INNER JOIN player_recruiting_cycles prc ON p.id = prc.player_id AND prc.recruiting_year = ?
+          GROUP BY p.position
+          ORDER BY count DESC
+        `, [year]);
+      } else {
+        byPosition = await db.query(`
+          SELECT
+            p.position,
+            COUNT(*) as count,
+            COUNT(CASE WHEN po.status = 'Signed' THEN 1 END) as signed
+          FROM players p
+          LEFT JOIN player_outcomes po ON p.id = po.player_id
+          GROUP BY p.position
+          ORDER BY count DESC
+        `);
+      }
 
       // By conference
-      const byConference = await db.query(`
-        SELECT 
-          p.conference,
-          COUNT(*) as count,
-          COUNT(CASE WHEN po.status = 'Signed' THEN 1 END) as signed
-        FROM players p
-        LEFT JOIN player_outcomes po ON p.id = po.player_id
-        ${year ? 'WHERE p.eligibility_year = ?' : ''}
-        GROUP BY p.conference
-        ORDER BY count DESC
-      `, year ? [year] : []);
+      let byConference;
+      if (year) {
+        byConference = await db.query(`
+          SELECT
+            p.conference,
+            COUNT(*) as count,
+            COUNT(CASE WHEN prc.status = 'Signed' THEN 1 END) as signed
+          FROM players p
+          INNER JOIN player_recruiting_cycles prc ON p.id = prc.player_id AND prc.recruiting_year = ?
+          GROUP BY p.conference
+          ORDER BY count DESC
+        `, [year]);
+      } else {
+        byConference = await db.query(`
+          SELECT
+            p.conference,
+            COUNT(*) as count,
+            COUNT(CASE WHEN po.status = 'Signed' THEN 1 END) as signed
+          FROM players p
+          LEFT JOIN player_outcomes po ON p.id = po.player_id
+          GROUP BY p.conference
+          ORDER BY count DESC
+        `);
+      }
 
       // Materials usage
       const materialsUsage = await db.query(`
@@ -660,7 +744,8 @@ class PlayersController {
           overall: overallStats,
           byPosition,
           byConference,
-          materialsUsage
+          materialsUsage,
+          recruitingYears: recruitingYears.map(r => r.recruiting_year)
         }
       });
     } catch (error) {
@@ -924,14 +1009,21 @@ class PlayersController {
         yearsToTry = [parseInt(year)];
         console.log('📅 Using specific year:', year);
       } else if (recruitingYear) {
-        // If recruiting year available, search forward from signing year (covers college career + transfer portal)
+        // If recruiting year available, search forward from signing year (covers full college career)
         const startYear = parseInt(recruitingYear);
-        yearsToTry = [startYear, startYear + 1, startYear + 2, startYear + 3, startYear + 4, startYear + 5, startYear + 6];
-        console.log('📅 Searching from recruiting year forward (7 years):', yearsToTry);
+        // Search 8 years forward to cover redshirts, grad transfers, etc.
+        yearsToTry = [];
+        for (let y = startYear; y <= startYear + 8; y++) {
+          yearsToTry.push(y);
+        }
+        console.log('📅 Searching from recruiting year forward (8 years):', yearsToTry);
       } else {
-        // Fall back to searching backwards from current year
-        yearsToTry = [currentYear, currentYear - 1, currentYear - 2, currentYear - 3, currentYear - 4, currentYear - 5, currentYear - 6];
-        console.log('📅 Searching backwards from current year (7 years):', yearsToTry);
+        // Fall back to searching backwards from current year - extend to 10 years for older players
+        yearsToTry = [];
+        for (let y = currentYear; y >= currentYear - 10; y--) {
+          yearsToTry.push(y);
+        }
+        console.log('📅 Searching backwards from current year (10 years):', yearsToTry);
       }
 
       let allTransfers = [];
@@ -955,78 +1047,198 @@ class PlayersController {
         }
       }
 
-      // Find matching player by EXACT name match
+      // Find matching player by name match (with nickname support)
       const nameToMatch = name.toLowerCase().trim();
       const nameParts = nameToMatch.split(' ');
       const firstName = nameParts[0];
       const lastName = nameParts[nameParts.length - 1];
+
+      // Common nickname mappings for name matching
+      const nicknameMap = {
+        'zachariah': ['zach', 'zachary', 'zac'],
+        'zach': ['zachariah', 'zachary', 'zac'],
+        'zachary': ['zach', 'zachariah', 'zac'],
+        'michael': ['mike', 'mikey'],
+        'mike': ['michael', 'mikey'],
+        'william': ['will', 'bill', 'billy', 'willy'],
+        'will': ['william', 'bill', 'billy'],
+        'robert': ['rob', 'bob', 'bobby', 'robby'],
+        'rob': ['robert', 'bob', 'bobby'],
+        'christopher': ['chris', 'topher'],
+        'chris': ['christopher', 'topher'],
+        'matthew': ['matt', 'matty'],
+        'matt': ['matthew', 'matty'],
+        'jonathan': ['jon', 'john', 'johnny'],
+        'jon': ['jonathan', 'john', 'johnny'],
+        'john': ['jonathan', 'jon', 'johnny'],
+        'joshua': ['josh'],
+        'josh': ['joshua'],
+        'nicholas': ['nick', 'nicky'],
+        'nick': ['nicholas', 'nicky'],
+        'anthony': ['tony', 'ant'],
+        'tony': ['anthony'],
+        'benjamin': ['ben', 'benny'],
+        'ben': ['benjamin', 'benny'],
+        'alexander': ['alex', 'xander'],
+        'alex': ['alexander', 'xander'],
+        'daniel': ['dan', 'danny'],
+        'dan': ['daniel', 'danny'],
+        'joseph': ['joe', 'joey'],
+        'joe': ['joseph', 'joey'],
+        'james': ['jim', 'jimmy', 'jamie'],
+        'jim': ['james', 'jimmy'],
+        'david': ['dave', 'davey'],
+        'dave': ['david', 'davey'],
+        'thomas': ['tom', 'tommy'],
+        'tom': ['thomas', 'tommy'],
+        'richard': ['rick', 'dick', 'ricky'],
+        'rick': ['richard', 'ricky'],
+        'samuel': ['sam', 'sammy'],
+        'sam': ['samuel', 'sammy'],
+        'timothy': ['tim', 'timmy'],
+        'tim': ['timothy', 'timmy'],
+        'edward': ['ed', 'eddie', 'ted', 'teddy'],
+        'ed': ['edward', 'eddie'],
+        'charles': ['charlie', 'chuck'],
+        'charlie': ['charles', 'chuck'],
+        'isaiah': ['isa']
+      };
+
+      // Check if first names match (including nicknames)
+      const firstNameMatches = (name1, name2) => {
+        if (name1 === name2) return true;
+        const nicknames1 = nicknameMap[name1] || [];
+        const nicknames2 = nicknameMap[name2] || [];
+        return nicknames1.includes(name2) || nicknames2.includes(name1);
+      };
 
       let matchingTransfers = allTransfers.filter(transfer => {
         const transferFullName = `${transfer.firstName} ${transfer.lastName}`.toLowerCase().trim();
         const transferFirstName = transfer.firstName?.toLowerCase().trim() || '';
         const transferLastName = transfer.lastName?.toLowerCase().trim() || '';
 
-        // Require exact name match (not partial)
+        // Exact full name match
         const exactMatch = transferFullName === nameToMatch;
+        // Exact first/last match
         const firstLastMatch = transferFirstName === firstName && transferLastName === lastName;
+        // Nickname-aware first name match with exact last name
+        const nicknameMatch = transferLastName === lastName && firstNameMatches(transferFirstName, firstName);
 
-        return exactMatch || firstLastMatch;
+        return exactMatch || firstLastMatch || nicknameMatch;
       });
 
-      console.log('📊 Found', matchingTransfers.length, 'exact name matches');
+      console.log('📊 Found', matchingTransfers.length, 'name matches (with nickname support)');
 
-      // If we have a current school, BUILD the transfer chain leading to that school
+      // If we have a current school, try to BUILD a transfer chain
       if (school && matchingTransfers.length > 0) {
         console.log('🏫 Building transfer chain for player at:', school);
+        console.log('   Matching transfers to verify:', matchingTransfers.map(t => `${t.origin} → ${t.destination}`).join(', '));
+        const schoolLower = school.toLowerCase();
 
-        // Build transfer chain backwards from current school
-        const chain = [];
+        // Strategy 1: Build chain backwards from current school (transfers TO this school)
+        const chainToSchool = [];
         let searchSchool = school;
         const usedTransfers = new Set();
 
-        // Keep searching backwards until no more transfers found
         let foundTransfer = true;
         while (foundTransfer) {
           foundTransfer = false;
 
-          // Find transfer where destination matches what we're searching for
           for (let i = 0; i < matchingTransfers.length; i++) {
-            if (usedTransfers.has(i)) continue; // Skip already used transfers
+            if (usedTransfers.has(i)) continue;
 
             const transfer = matchingTransfers[i];
             const destSchool = transfer.destination?.toLowerCase() || '';
             const currentSearchSchool = searchSchool.toLowerCase();
 
-            // Check if this transfer's destination matches our search target
+            // Don't match if destination is empty/null - that's not a real destination
+            if (!destSchool) continue;
+
             const matches = destSchool.includes(currentSearchSchool) || currentSearchSchool.includes(destSchool);
 
             if (matches) {
-              console.log('  ✅ Found in chain:', `${transfer.origin} → ${transfer.destination} (${transfer.season})`);
-              chain.unshift(transfer); // Add to beginning of chain
+              console.log('  ✅ Found in chain (to school):', `${transfer.origin} → ${transfer.destination} (${transfer.season})`);
+              chainToSchool.unshift(transfer);
               usedTransfers.add(i);
-              searchSchool = transfer.origin; // Now search for transfers TO this origin
+              searchSchool = transfer.origin;
               foundTransfer = true;
               break;
             }
           }
         }
 
-        if (chain.length === 0) {
-          console.warn('⚠️ Could not build transfer chain to current school - may be different player with same name.');
-          console.warn('   Current school:', school);
-          console.warn('   Available transfers:', matchingTransfers.map(t => `${t.origin} → ${t.destination}`).join(', '));
+        // Strategy 2: If no chain TO school, check for transfers FROM this school
+        // This handles cases where the player has since transferred away (e.g., Hudson Card at Texas)
+        if (chainToSchool.length === 0) {
+          console.log('🔄 No chain to school found. Checking for transfers FROM school...');
 
-          // Return empty - don't show potentially wrong data
-          return res.json({
-            success: true,
-            data: [],
-            warning: 'Could not build transfer chain to current school - may be different player'
+          // Find all transfers where origin matches current school
+          const transfersFromSchool = matchingTransfers.filter(t => {
+            const originSchool = t.origin?.toLowerCase() || '';
+            if (!originSchool) return false; // Don't match empty origins
+            return originSchool.includes(schoolLower) || schoolLower.includes(originSchool);
           });
-        }
 
-        // Use only the transfers in the chain
-        matchingTransfers = chain;
-        console.log('✅ Built transfer chain with', matchingTransfers.length, 'transfers');
+          if (transfersFromSchool.length > 0) {
+            console.log('  ✅ Found', transfersFromSchool.length, 'transfers FROM', school);
+
+            // Build forward chain from this school
+            const chainFromSchool = [];
+            let currentSchool = school;
+            const usedFromTransfers = new Set();
+
+            foundTransfer = true;
+            while (foundTransfer) {
+              foundTransfer = false;
+
+              for (let i = 0; i < matchingTransfers.length; i++) {
+                if (usedFromTransfers.has(i)) continue;
+
+                const transfer = matchingTransfers[i];
+                const originSchool = transfer.origin?.toLowerCase() || '';
+                const searchSchoolLower = currentSchool.toLowerCase();
+
+                // Don't match if origin is empty/null
+                if (!originSchool) continue;
+
+                const matches = originSchool.includes(searchSchoolLower) || searchSchoolLower.includes(originSchool);
+
+                if (matches) {
+                  console.log('  ✅ Found in chain (from school):', `${transfer.origin} → ${transfer.destination} (${transfer.season})`);
+                  chainFromSchool.push(transfer);
+                  usedFromTransfers.add(i);
+                  currentSchool = transfer.destination; // Follow the chain forward
+                  foundTransfer = true;
+                  break;
+                }
+              }
+            }
+
+            if (chainFromSchool.length > 0) {
+              matchingTransfers = chainFromSchool;
+              console.log('✅ Built forward chain with', matchingTransfers.length, 'transfers');
+            } else {
+              // Just return the transfers from this school
+              matchingTransfers = transfersFromSchool;
+            }
+          } else {
+            console.warn('⚠️ REJECTING - Could not build transfer chain - no transfers to or from current school.');
+            console.warn('   Current school:', school);
+            console.warn('   Available transfers:', matchingTransfers.map(t => `${t.origin} → ${t.destination}`).join(', '));
+
+            // Return empty - don't show potentially wrong data
+            console.warn('   RETURNING EMPTY ARRAY');
+            return res.json({
+              success: true,
+              data: [],
+              warning: 'Could not verify transfer chain - may be different player with same name'
+            });
+          }
+        } else {
+          // Use the chain TO school
+          matchingTransfers = chainToSchool;
+          console.log('✅ Built backward chain with', matchingTransfers.length, 'transfers');
+        }
       }
 
       console.log('✅ Found', matchingTransfers.length, 'verified transfer records');
@@ -1273,6 +1485,182 @@ class PlayersController {
       res.json({ success: true, data: formattedRecruits });
     } catch (error) {
       console.error('Error searching HS recruits:', error.message);
+      res.status(500).json({
+        success: false,
+        error: error.message
+      });
+    }
+  }
+
+  // Search 247Sports for recruiting data (fallback when CFBD doesn't have data)
+  async search247Recruiting(req, res) {
+    try {
+      const { name, school, originalSchool, year } = req.query;
+
+      if (!name || !school) {
+        return res.status(400).json({
+          success: false,
+          error: 'Name and school are required'
+        });
+      }
+
+      console.log(`🏈 Searching 247Sports for: ${name} at ${school}${originalSchool ? ` (original: ${originalSchool})` : ''}`);
+
+      // Schools to try - current school first, then original if different
+      const schoolsToTry = [school];
+      if (originalSchool && originalSchool.toLowerCase() !== school.toLowerCase()) {
+        schoolsToTry.push(originalSchool);
+      }
+
+      // Determine years to search
+      const currentYear = new Date().getFullYear();
+      let yearsToTry = [];
+
+      if (year) {
+        yearsToTry = [parseInt(year)];
+      } else {
+        // Search backwards from current year (cover last 12 years for older players)
+        for (let y = currentYear; y >= currentYear - 12; y--) {
+          yearsToTry.push(y);
+        }
+      }
+
+      let foundPlayer = null;
+      let foundAtSchool = null;
+
+      // Helper function to search a single year
+      const searchYear = async (schoolSlug, year, schoolName) => {
+        const url = `https://247sports.com/college/${schoolSlug}/Season/${year}-Football/Commits/`;
+        try {
+          const response = await axios.get(url, {
+            headers: {
+              'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+              'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+              'Accept-Language': 'en-US,en;q=0.5',
+            },
+            timeout: 8000
+          });
+
+          const $ = cheerio.load(response.data);
+          const commits = [];
+
+          $('li.ri-page__list-item').each((i, el) => {
+            const nameEl = $(el).find('a.ri-page__name-link');
+            const commitName = nameEl.text().trim();
+
+            if (commitName) {
+              const ratingText = $(el).find('.score').text().trim();
+              const rating = ratingText ? parseFloat(ratingText) / 100 : null;
+              const natRank = $(el).find('.natrank').text().trim();
+              const posRank = $(el).find('.posrank').text().trim();
+              const stRank = $(el).find('.sttrank').text().trim();
+              const starsEl = $(el).find('.ri-page__star-and-score .yellow, .icon-starsolid.yellow');
+              const stars = starsEl.length || null;
+
+              const metaText = $(el).find('.recruit .meta').text().trim();
+              let highSchool = '', city = '', state = '';
+              const cleanMeta = metaText.replace(/\s+/g, ' ').trim();
+              const hometownMatch = cleanMeta.match(/^(.+?)\s*\((.+),\s*(\w+)\)/);
+              if (hometownMatch) {
+                highSchool = hometownMatch[1].trim();
+                city = hometownMatch[2].trim();
+                state = hometownMatch[3].trim();
+              }
+
+              const metricsText = $(el).find('.metrics').text().trim();
+              let height = '', weight = '';
+              const metricsMatch = metricsText.match(/(\d+-\d+)\s*\/\s*(\d+)/);
+              if (metricsMatch) {
+                height = metricsMatch[1].replace('-', "'") + '"';
+                weight = metricsMatch[2];
+              }
+
+              commits.push({
+                name: commitName,
+                position: $(el).find('.position').text().trim(),
+                rating, ranking: natRank && natRank !== 'NA' ? parseInt(natRank) : null,
+                positionRanking: posRank ? parseInt(posRank) : null,
+                stateRanking: stRank ? parseInt(stRank) : null,
+                stars, highSchool, hometown: city, state, height, weight,
+                classYear: year
+              });
+            }
+          });
+
+          // Search for player by name
+          const nameLower = name.toLowerCase().trim();
+          const nameParts = nameLower.split(' ');
+          const matches = commits.filter(c => {
+            const commitNameLower = c.name.toLowerCase();
+            return nameParts.every(part => commitNameLower.includes(part));
+          });
+
+          if (matches.length > 0) {
+            return { player: matches[0], school: schoolName, year };
+          }
+          return null;
+        } catch (error) {
+          return null;
+        }
+      };
+
+      for (const searchSchool of schoolsToTry) {
+        if (foundPlayer) break;
+
+        const schoolSlug = searchSchool.toLowerCase()
+          .replace(/\s+/g, '-')
+          .replace(/[^a-z0-9-]/g, '');
+
+        console.log(`  Searching ${searchSchool} (parallel)...`);
+
+        // Search years in parallel batches of 4
+        const batchSize = 4;
+        for (let i = 0; i < yearsToTry.length && !foundPlayer; i += batchSize) {
+          const batch = yearsToTry.slice(i, i + batchSize);
+          console.log(`    Batch: ${batch.join(', ')}`);
+
+          const results = await Promise.all(
+            batch.map(y => searchYear(schoolSlug, y, searchSchool))
+          );
+
+          const found = results.find(r => r !== null);
+          if (found) {
+            foundPlayer = found.player;
+            foundAtSchool = found.school;
+            console.log(`  ✅ Found ${name} in ${found.year} class at ${found.school}`);
+            break;
+          }
+        }
+      }
+
+      if (foundPlayer) {
+        res.json({
+          success: true,
+          source: '247sports',
+          data: [{
+            name: foundPlayer.name,
+            position: foundPlayer.position,
+            stars: foundPlayer.stars,
+            rating: foundPlayer.rating,
+            ranking: foundPlayer.ranking,
+            stateRanking: foundPlayer.stateRanking,
+            positionRanking: foundPlayer.positionRanking,
+            highSchool: foundPlayer.highSchool,
+            hometown: foundPlayer.hometown,
+            state: foundPlayer.state,
+            height: foundPlayer.height,
+            weight: foundPlayer.weight,
+            school: foundAtSchool,
+            classYear: foundPlayer.classYear
+          }]
+        });
+      } else {
+        console.log(`  ❌ ${name} not found in 247Sports`);
+        res.json({ success: true, source: '247sports', data: [] });
+      }
+
+    } catch (error) {
+      console.error('Error searching 247Sports:', error.message);
       res.status(500).json({
         success: false,
         error: error.message

@@ -109,9 +109,13 @@ class AuthController {
 
   // Verify token middleware
   verifyToken(req, res, next) {
-    const token = req.headers.authorization?.split(' ')[1];
+    const authHeader = req.headers.authorization;
+    console.log('🔐 Auth header:', authHeader ? `Bearer ${authHeader.substring(0, 20)}...` : 'MISSING');
+
+    const token = authHeader?.split(' ')[1];
 
     if (!token) {
+      console.log('❌ No token provided');
       return res.status(401).json({
         success: false,
         error: 'No token provided'

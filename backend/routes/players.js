@@ -11,6 +11,7 @@ router.get('/search-cfbd', playersController.searchCFBD.bind(playersController))
 router.get('/search-hs-recruits', playersController.searchHSRecruits.bind(playersController));
 router.get('/nfl-details/:id', playersController.getNFLPlayerDetails.bind(playersController));
 router.get('/recruiting-data', playersController.getRecruitingData.bind(playersController));
+router.get('/recruiting-data-247', playersController.search247Recruiting.bind(playersController));
 router.get('/transfer-data', playersController.getTransferData.bind(playersController));
 router.get('/espn-details/:id', playersController.getESPNPlayerDetails.bind(playersController));
 router.get('/:id/transfers', playersController.getPlayerTransfers.bind(playersController));

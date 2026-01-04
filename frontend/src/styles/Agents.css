@@ -189,3 +189,26 @@
 .new-agent-row:hover {
   background-color: #c8e6c9 !important;
 }
+
+/* Agent links */
+.agent-link {
+  color: #007bff;
+  text-decoration: none;
+}
+
+.agent-link:hover {
+  text-decoration: underline;
+  color: #0056b3;
+}
+
+/* Input groups for compact forms */
+.name-inputs,
+.location-inputs {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.name-inputs .edit-input,
+.location-inputs .edit-input {
+  flex: 1;
+}

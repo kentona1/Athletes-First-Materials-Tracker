@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import axios from '../api/axios';
 import '../styles/Agents.css';
 
@@ -8,9 +9,9 @@ function Agents() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('performance'); // 'performance' or 'management'
   const [editingAgent, setEditingAgent] = useState(null);
-  const [editForm, setEditForm] = useState({ first_name: '', last_name: '', email: '', phone: '' });
+  const [editForm, setEditForm] = useState({ first_name: '', last_name: '', email: '', phone: '', city: '', state: '', address: '', photo_url: '' });
   const [showNewAgentForm, setShowNewAgentForm] = useState(false);
-  const [newAgentForm, setNewAgentForm] = useState({ first_name: '', last_name: '', email: '', phone: '' });
+  const [newAgentForm, setNewAgentForm] = useState({ first_name: '', last_name: '', email: '', phone: '', city: '', state: '', address: '', photo_url: '' });
 
   useEffect(() => {
     fetchAgentsData();
@@ -45,7 +46,11 @@ function Agents() {
       first_name: agent.first_name || agent.name?.split(' ')[0] || '',
       last_name: agent.last_name || agent.name?.split(' ').slice(1).join(' ') || '',
       email: agent.email || '',
-      phone: agent.phone || ''
+      phone: agent.phone || '',
+      city: agent.city || '',
+      state: agent.state || '',
+      address: agent.address || '',
+      photo_url: agent.photo_url || ''
     });
   };
 
@@ -64,7 +69,7 @@ function Agents() {
 
   const handleCancelEdit = () => {
     setEditingAgent(null);
-    setEditForm({ first_name: '', last_name: '', email: '', phone: '' });
+    setEditForm({ first_name: '', last_name: '', email: '', phone: '', city: '', state: '', address: '', photo_url: '' });
   };
 
   const handleToggleActive = async (agent) => {
@@ -95,7 +100,7 @@ function Agents() {
     try {
       await axios.post('/api/agents', newAgentForm);
       setShowNewAgentForm(false);
-      setNewAgentForm({ first_name: '', last_name: '', email: '', phone: '' });
+      setNewAgentForm({ first_name: '', last_name: '', email: '', phone: '', city: '', state: '', address: '', photo_url: '' });
       fetchAllAgents();
       fetchAgentsData();
       alert('Agent created successfully!');
@@ -107,7 +112,7 @@ function Agents() {
 
   const handleCancelNewAgent = () => {
     setShowNewAgentForm(false);
-    setNewAgentForm({ first_name: '', last_name: '', email: '', phone: '' });
+    setNewAgentForm({ first_name: '', last_name: '', email: '', phone: '', city: '', state: '', address: '', photo_url: '' });
   };
 
   if (loading) {
@@ -153,7 +158,11 @@ function Agents() {
             <tbody>
               {performance.map((agent, idx) => (
                 <tr key={idx}>
-                  <td><strong>{agent.agent}</strong></td>
+                  <td>
+                    <Link to={`/agents/${agent.agent_id}`} className="agent-link">
+                      <strong>{agent.agent}</strong>
+                    </Link>
+                  </td>
                   <td>{agent.total_players}</td>
                   <td className="success-text">{agent.signed}</td>
                   <td>{agent.missed}</td>
@@ -187,8 +196,8 @@ function Agents() {
             <table>
               <thead>
                 <tr>
-                  <th>First Name</th>
-                  <th>Last Name</th>
+                  <th>Name</th>
+                  <th>Location</th>
                   <th>Email</th>
                   <th>Phone</th>
                   <th>Status</th>
@@ -200,23 +209,42 @@ function Agents() {
                 {showNewAgentForm && (
                   <tr className="new-agent-row">
                     <td>
-                      <input
-                        type="text"
-                        value={newAgentForm.first_name}
-                        onChange={(e) => setNewAgentForm({ ...newAgentForm, first_name: e.target.value })}
-                        className="edit-input"
-                        placeholder="First name *"
-                        autoFocus
-                      />
+                      <div className="name-inputs">
+                        <input
+                          type="text"
+                          value={newAgentForm.first_name}
+                          onChange={(e) => setNewAgentForm({ ...newAgentForm, first_name: e.target.value })}
+                          className="edit-input"
+                          placeholder="First *"
+                          autoFocus
+                        />
+                        <input
+                          type="text"
+                          value={newAgentForm.last_name}
+                          onChange={(e) => setNewAgentForm({ ...newAgentForm, last_name: e.target.value })}
+                          className="edit-input"
+                          placeholder="Last *"
+                        />
+                      </div>
                     </td>
                     <td>
-                      <input
-                        type="text"
-                        value={newAgentForm.last_name}
-                        onChange={(e) => setNewAgentForm({ ...newAgentForm, last_name: e.target.value })}
-                        className="edit-input"
-                        placeholder="Last name *"
-                      />
+                      <div className="location-inputs">
+                        <input
+                          type="text"
+                          value={newAgentForm.city}
+                          onChange={(e) => setNewAgentForm({ ...newAgentForm, city: e.target.value })}
+                          className="edit-input"
+                          placeholder="City"
+                        />
+                        <input
+                          type="text"
+                          value={newAgentForm.state}
+                          onChange={(e) => setNewAgentForm({ ...newAgentForm, state: e.target.value })}
+                          className="edit-input"
+                          placeholder="State"
+                          style={{ width: '60px' }}
+                        />
+                      </div>
                     </td>
                     <td>
                       <input
@@ -261,22 +289,41 @@ function Agents() {
                     {editingAgent === agent.id ? (
                       <>
                         <td>
-                          <input
-                            type="text"
-                            value={editForm.first_name}
-                            onChange={(e) => setEditForm({ ...editForm, first_name: e.target.value })}
-                            className="edit-input"
-                            placeholder="First name"
-                          />
+                          <div className="name-inputs">
+                            <input
+                              type="text"
+                              value={editForm.first_name}
+                              onChange={(e) => setEditForm({ ...editForm, first_name: e.target.value })}
+                              className="edit-input"
+                              placeholder="First"
+                            />
+                            <input
+                              type="text"
+                              value={editForm.last_name}
+                              onChange={(e) => setEditForm({ ...editForm, last_name: e.target.value })}
+                              className="edit-input"
+                              placeholder="Last"
+                            />
+                          </div>
                         </td>
                         <td>
-                          <input
-                            type="text"
-                            value={editForm.last_name}
-                            onChange={(e) => setEditForm({ ...editForm, last_name: e.target.value })}
-                            className="edit-input"
-                            placeholder="Last name"
-                          />
+                          <div className="location-inputs">
+                            <input
+                              type="text"
+                              value={editForm.city}
+                              onChange={(e) => setEditForm({ ...editForm, city: e.target.value })}
+                              className="edit-input"
+                              placeholder="City"
+                            />
+                            <input
+                              type="text"
+                              value={editForm.state}
+                              onChange={(e) => setEditForm({ ...editForm, state: e.target.value })}
+                              className="edit-input"
+                              placeholder="State"
+                              style={{ width: '60px' }}
+                            />
+                          </div>
                         </td>
                         <td>
                           <input
@@ -317,8 +364,12 @@ function Agents() {
                       </>
                     ) : (
                       <>
-                        <td><strong>{agent.first_name || agent.name?.split(' ')[0] || '-'}</strong></td>
-                        <td><strong>{agent.last_name || agent.name?.split(' ').slice(1).join(' ') || '-'}</strong></td>
+                        <td>
+                          <Link to={`/agents/${agent.id}`} className="agent-link">
+                            <strong>{agent.name || `${agent.first_name} ${agent.last_name}`}</strong>
+                          </Link>
+                        </td>
+                        <td>{[agent.city, agent.state].filter(Boolean).join(', ') || '-'}</td>
                         <td>{agent.email || '-'}</td>
                         <td>{agent.phone || '-'}</td>
                         <td>

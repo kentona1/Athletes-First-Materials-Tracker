@@ -22,8 +22,12 @@ const axiosInstance = axios.create({
 axiosInstance.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
+    console.log('🔑 Axios interceptor - token from localStorage:', token ? token.substring(0, 30) + '...' : 'NONE');
     if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+      // Handle case where token might already have "Bearer " prefix
+      const cleanToken = token.startsWith('Bearer ') ? token.substring(7) : token;
+      console.log('🔑 Cleaned token:', cleanToken.substring(0, 30) + '...');
+      config.headers.Authorization = `Bearer ${cleanToken}`;
     }
     return config;
   },

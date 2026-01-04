@@ -58,10 +58,11 @@ class AgentsController {
 
       // Get performance stats
       const stats = await db.get(`
-        SELECT 
+        SELECT
           COUNT(DISTINCT pa.player_id) as total_players,
           COUNT(DISTINCT CASE WHEN po.status = 'Signed' THEN pa.player_id END) as signed,
-          COUNT(DISTINCT CASE WHEN po.status = 'Missed' THEN pa.player_id END) as missed,
+          COUNT(DISTINCT CASE WHEN po.status IN ('Not Signed', 'Missed', 'Walked Away', 'No Meeting') THEN pa.player_id END) as not_signed,
+          COUNT(DISTINCT CASE WHEN po.status = 'Returned to School' THEN pa.player_id END) as active,
           COUNT(DISTINCT pm.id) as total_materials
         FROM player_agents pa
         LEFT JOIN player_outcomes po ON pa.player_id = po.player_id
@@ -69,12 +70,42 @@ class AgentsController {
         WHERE pa.agent_id = ?
       `, [id]);
 
+      // Get position breakdown
+      const byPosition = await db.query(`
+        SELECT
+          p.position,
+          COUNT(*) as count,
+          COUNT(CASE WHEN po.status = 'Signed' THEN 1 END) as signed
+        FROM players p
+        JOIN player_agents pa ON p.id = pa.player_id
+        LEFT JOIN player_outcomes po ON p.id = po.player_id
+        WHERE pa.agent_id = ?
+        GROUP BY p.position
+        ORDER BY count DESC
+      `, [id]);
+
+      // Get conference breakdown
+      const byConference = await db.query(`
+        SELECT
+          p.conference,
+          COUNT(*) as count,
+          COUNT(CASE WHEN po.status = 'Signed' THEN 1 END) as signed
+        FROM players p
+        JOIN player_agents pa ON p.id = pa.player_id
+        LEFT JOIN player_outcomes po ON p.id = po.player_id
+        WHERE pa.agent_id = ?
+        GROUP BY p.conference
+        ORDER BY count DESC
+      `, [id]);
+
       res.json({
         success: true,
         data: {
           ...agent,
           players,
-          stats
+          stats,
+          byPosition,
+          byConference
         }
       });
     } catch (error) {
@@ -156,7 +187,8 @@ class AgentsController {
       const { year } = req.query;
 
       let sql = `
-        SELECT 
+        SELECT
+          a.id as agent_id,
           a.name as agent,
           COUNT(DISTINCT pa.player_id) as total_players,
           COUNT(DISTINCT CASE WHEN po.status = 'Signed' THEN pa.player_id END) as signed,
