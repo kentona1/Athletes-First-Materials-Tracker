@@ -15,7 +15,8 @@ class PlayersController {
         year,
         search,
         sortBy,  // 'lastName' or 'firstName' (default: lastName)
-        limit
+        limit,
+        page
       } = req.query;
 
       const params = [];
@@ -30,7 +31,8 @@ class PlayersController {
             COUNT(DISTINCT pm.id) as materials_count,
             prc.status as outcome_status,
             COALESCE(po.draft_round, p.draft_round) as draft_round,
-            COALESCE(po.draft_year, p.draft_year) as draft_year
+            COALESCE(po.draft_year, p.draft_year) as draft_year,
+            po.signed_team as team
           FROM players p
           INNER JOIN player_recruiting_cycles prc ON p.id = prc.player_id AND prc.recruiting_year = ?
           LEFT JOIN player_agents pa ON p.id = pa.player_id
@@ -48,7 +50,8 @@ class PlayersController {
             COUNT(DISTINCT pm.id) as materials_count,
             COALESCE(po.status, p.status) as outcome_status,
             COALESCE(po.draft_round, p.draft_round) as draft_round,
-            COALESCE(po.draft_year, p.draft_year) as draft_year
+            COALESCE(po.draft_year, p.draft_year) as draft_year,
+            po.signed_team as team
           FROM players p
           LEFT JOIN player_agents pa ON p.id = pa.player_id
           LEFT JOIN agents a ON pa.agent_id = a.id
@@ -92,13 +95,51 @@ class PlayersController {
       const orderColumn = sortBy === 'firstName' ? 'p.first_name' : 'p.last_name';
       sql += ` GROUP BY p.id ORDER BY ${orderColumn}, p.name`;
 
-      // Apply limit if specified
-      if (limit && !isNaN(parseInt(limit))) {
-        sql += ` LIMIT ${parseInt(limit)}`;
+      // Build a proper count query
+      let countSql;
+      const countParams = [...params];
+      if (year) {
+        countSql = `
+          SELECT COUNT(DISTINCT p.id) as total
+          FROM players p
+          INNER JOIN player_recruiting_cycles prc ON p.id = prc.player_id AND prc.recruiting_year = ?
+          LEFT JOIN player_outcomes po ON p.id = po.player_id
+          WHERE 1=1
+        `;
+        if (status) countSql += ' AND prc.status = ?';
+      } else {
+        countSql = `
+          SELECT COUNT(DISTINCT p.id) as total
+          FROM players p
+          LEFT JOIN player_outcomes po ON p.id = po.player_id
+          WHERE 1=1
+        `;
+        if (status) countSql += ' AND COALESCE(po.status, p.status) = ?';
+      }
+      if (position) countSql += ' AND p.position = ?';
+      if (school) countSql += ' AND p.school LIKE ?';
+      if (conference) countSql += ' AND p.conference = ?';
+      if (search) countSql += ' AND p.name LIKE ?';
+
+      let total = 0;
+      try {
+        const countResult = await db.get(countSql, countParams);
+        total = countResult?.total || 0;
+      } catch (e) {
+        console.error('Count query error:', e);
+      }
+
+      // Apply pagination
+      const pageNum = parseInt(page) || 1;
+      const limitNum = parseInt(limit) || 50;
+      const offset = (pageNum - 1) * limitNum;
+
+      if (limit && !isNaN(limitNum)) {
+        sql += ` LIMIT ${limitNum} OFFSET ${offset}`;
       }
 
       const players = await db.query(sql, params);
-      res.json({ success: true, data: players });
+      res.json({ success: true, data: players, total, page: pageNum, limit: limitNum });
     } catch (error) {
       console.error('Error fetching players:', error);
       res.status(500).json({ success: false, error: error.message });
@@ -632,6 +673,34 @@ class PlayersController {
       res.json({ success: true, message: 'Agent assigned' });
     } catch (error) {
       console.error('Error assigning agent:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  }
+
+  // Remove agent from player
+  async removeAgent(req, res) {
+    try {
+      const { playerId, agentId } = req.body;
+
+      if (!playerId || !agentId) {
+        return res.status(400).json({
+          success: false,
+          error: 'playerId and agentId are required'
+        });
+      }
+
+      const result = await db.run(`
+        DELETE FROM player_agents
+        WHERE player_id = ? AND agent_id = ?
+      `, [playerId, agentId]);
+
+      res.json({
+        success: true,
+        message: 'Agent removed from player',
+        changes: result.changes
+      });
+    } catch (error) {
+      console.error('Error removing agent:', error);
       res.status(500).json({ success: false, error: error.message });
     }
   }
@@ -1665,6 +1734,145 @@ class PlayersController {
         success: false,
         error: error.message
       });
+    }
+  }
+
+  // =============================================
+  // POSITION MANAGEMENT ENDPOINTS
+  // =============================================
+
+  // Get all unique positions with counts
+  async getPositions(req, res) {
+    try {
+      const positions = await db.query(`
+        SELECT position, COUNT(*) as count
+        FROM players
+        WHERE position IS NOT NULL AND position != ''
+        GROUP BY position
+        ORDER BY count DESC
+      `);
+
+      // Define standard positions
+      const standardPositions = [
+        'QB', 'RB', 'FB', 'WR', 'TE',
+        'OL', 'OL (OT)', 'OL (OG)', 'OL (OC)',
+        'IDL', 'EDGE', 'LB',
+        'DB', 'DB (CB)', 'DB (SAF)',
+        'SPEC', 'SPEC (K)', 'SPEC (P)'
+      ];
+
+      // Categorize positions
+      const categorized = positions.map(p => ({
+        position: p.position,
+        count: p.count,
+        isStandard: standardPositions.includes(p.position)
+      }));
+
+      res.json({
+        success: true,
+        data: {
+          positions: categorized,
+          standardPositions
+        }
+      });
+    } catch (error) {
+      console.error('Error fetching positions:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  }
+
+  // Get players by specific position
+  async getPlayersByPosition(req, res) {
+    try {
+      const { position } = req.params;
+      const { limit = 100, offset = 0 } = req.query;
+
+      const players = await db.query(`
+        SELECT id, name, position, school, conference
+        FROM players
+        WHERE position = ?
+        ORDER BY name
+        LIMIT ? OFFSET ?
+      `, [position, parseInt(limit), parseInt(offset)]);
+
+      const countResult = await db.get(`
+        SELECT COUNT(*) as total FROM players WHERE position = ?
+      `, [position]);
+
+      res.json({
+        success: true,
+        data: players,
+        total: countResult.total
+      });
+    } catch (error) {
+      console.error('Error fetching players by position:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  }
+
+  // Bulk update position for multiple players
+  async bulkUpdatePosition(req, res) {
+    try {
+      const { playerIds, newPosition } = req.body;
+
+      if (!playerIds || !Array.isArray(playerIds) || playerIds.length === 0) {
+        return res.status(400).json({
+          success: false,
+          error: 'playerIds array is required'
+        });
+      }
+
+      if (!newPosition) {
+        return res.status(400).json({
+          success: false,
+          error: 'newPosition is required'
+        });
+      }
+
+      // Update all players
+      const placeholders = playerIds.map(() => '?').join(',');
+      await db.run(`
+        UPDATE players
+        SET position = ?, updated_at = CURRENT_TIMESTAMP
+        WHERE id IN (${placeholders})
+      `, [newPosition, ...playerIds]);
+
+      res.json({
+        success: true,
+        message: `Updated ${playerIds.length} players to position: ${newPosition}`
+      });
+    } catch (error) {
+      console.error('Error bulk updating positions:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  }
+
+  // Map all players from one position to another
+  async mapPosition(req, res) {
+    try {
+      const { fromPosition, toPosition } = req.body;
+
+      if (!fromPosition || !toPosition) {
+        return res.status(400).json({
+          success: false,
+          error: 'fromPosition and toPosition are required'
+        });
+      }
+
+      const result = await db.run(`
+        UPDATE players
+        SET position = ?, updated_at = CURRENT_TIMESTAMP
+        WHERE position = ?
+      `, [toPosition, fromPosition]);
+
+      res.json({
+        success: true,
+        message: `Mapped all "${fromPosition}" to "${toPosition}"`,
+        affectedRows: result.changes
+      });
+    } catch (error) {
+      console.error('Error mapping position:', error);
+      res.status(500).json({ success: false, error: error.message });
     }
   }
 }

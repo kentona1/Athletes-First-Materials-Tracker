@@ -5,17 +5,34 @@
 }
 
 .schools-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
   margin-bottom: 30px;
+  gap: 20px;
+}
+
+.schools-header-left {
+  flex: 1;
 }
 
 .schools-header h1 {
   margin: 0 0 10px 0;
-  color: #1a1a1a;
+  color: var(--text-primary, #1a1a1a);
+  font-family: var(--font-display, inherit);
+  font-size: 2rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: -0.01em;
 }
 
 .schools-subtitle {
-  color: #666;
+  color: var(--text-secondary, #666);
   margin: 0;
+}
+
+.cleanup-link {
+  white-space: nowrap;
 }
 
 .schools-controls {

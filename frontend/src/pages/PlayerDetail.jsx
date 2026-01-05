@@ -1069,6 +1069,15 @@ function PlayerDetail() {
                 </>
               )}
             </p>
+            {player.agents && player.agents.length > 0 && (
+              <div className="header-agent-badges">
+                {player.agents.map(agent => (
+                  <Link key={agent.id} to={`/agents/${agent.id}`} className="agent-badge-small">
+                    {agent.name}
+                  </Link>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
@@ -1131,18 +1140,6 @@ function PlayerDetail() {
           )}
         </div>
 
-        {player.agents && player.agents.length > 0 && (
-          <div className="agents-section">
-            <h3>Assigned Agents</h3>
-            <div className="agents-list">
-              {player.agents.map(agent => (
-                <Link key={agent.id} to={`/agents/${agent.id}`} className="agent-badge agent-link">
-                  {agent.name}
-                </Link>
-              ))}
-            </div>
-          </div>
-        )}
       </div>
 
       {/* Status/Outcome Editing Form */}
@@ -1879,118 +1876,104 @@ function PlayerDetail() {
         </div>
       )}
 
-      {/* Transfer History Section */}
-      {player.transfers && player.transfers.length > 0 && (
-        <div className="transfer-history-card">
-          <h2>Transfer History</h2>
+      {/* Recruiting History Section - Compact Timeline */}
+      {(player.transfers?.length > 0 || player.original_commitment || player.high_school) && (
+        <div className="recruiting-history-card">
+          <h2>Recruiting History</h2>
 
-          <div className="transfer-timeline">
-            {player.transfers.map((transfer, index) => (
-              <div key={transfer.id} className="transfer-item">
-                <div className="transfer-year">{transfer.transfer_year || transfer.transfer_season}</div>
-                <div className="transfer-arrow">→</div>
-                <div className="transfer-details">
-                  <div className="transfer-schools">
-                    {transfer.from_school && (
-                      <span className="from-school">{transfer.from_school} → </span>
-                    )}
-                    <span className="to-school">{transfer.to_school}</span>
-                  </div>
-                  {transfer.eligibility_remaining && (
-                    <div className="transfer-eligibility">
-                      Eligibility: {transfer.eligibility_remaining}
-                    </div>
-                  )}
-                  <div className="transfer-type">{transfer.transfer_type || 'Portal'}</div>
-                </div>
-              </div>
-            ))}
-          </div>
+          <div className="history-timeline">
+            {(() => {
+              const steps = [];
 
-          {/* School Progression Timeline */}
-          <div className="school-progression">
-            <h3>School Progression</h3>
-            <div className="progression-timeline">
-              {(() => {
-                const steps = [];
+              // High School
+              if (player.high_school) {
+                steps.push({
+                  type: 'high_school',
+                  label: 'HS',
+                  school: player.high_school,
+                  year: player.recruiting_class_year ? `Class of ${player.recruiting_class_year}` : null,
+                  logo: null
+                });
+              }
 
-                // 1. Add high school
-                if (player.high_school) {
-                  steps.push({
-                    type: 'high_school',
-                    label: 'High School',
-                    school: player.high_school,
-                    year: null
-                  });
-                }
-
-                // 2. Build college progression from transfers
-                if (player.transfers && player.transfers.length > 0) {
-                  const sortedTransfers = [...player.transfers].sort((a, b) => a.transfer_year - b.transfer_year);
-
-                  // Add the first school (from_school of first transfer)
-                  const firstTransfer = sortedTransfers[0];
+              // Original commitment / first school
+              if (player.transfers && player.transfers.length > 0) {
+                const sortedTransfers = [...player.transfers].sort((a, b) =>
+                  (a.transfer_year || 0) - (b.transfer_year || 0)
+                );
+                const firstSchool = sortedTransfers[0].from_school;
+                if (firstSchool) {
                   steps.push({
                     type: 'college',
-                    label: player.recruiting_class_year || 'Original',
-                    school: firstTransfer.from_school,
-                    year: player.recruiting_class_year
+                    label: player.recruiting_class_year || 'Signed',
+                    school: firstSchool,
+                    year: null,
+                    logo: progressionLogos[firstSchool]
                   });
-
-                  // Add all subsequent schools (to_school of each transfer)
-                  sortedTransfers.forEach(transfer => {
-                    steps.push({
-                      type: 'college',
-                      label: transfer.transfer_year,
-                      school: transfer.to_school,
-                      year: transfer.transfer_year
-                    });
-                  });
-                } else if (player.original_commitment || player.school) {
-                  // No transfers - show original commitment or current school
-                  if (player.original_commitment && player.original_commitment !== player.school) {
-                    // Had different original commitment
-                    steps.push({
-                      type: 'college',
-                      label: player.recruiting_class_year || 'Original',
-                      school: player.original_commitment,
-                      year: player.recruiting_class_year
-                    });
-                    steps.push({
-                      type: 'college',
-                      label: 'Current',
-                      school: player.school,
-                      year: null
-                    });
-                  } else {
-                    // Just current school
-                    steps.push({
-                      type: 'college',
-                      label: player.recruiting_class_year || 'Current',
-                      school: player.school,
-                      year: player.recruiting_class_year
-                    });
-                  }
                 }
 
-                return steps.map((step, idx) => (
-                  <React.Fragment key={idx}>
-                    {idx > 0 && <div className="progression-arrow">→</div>}
-                    <div className={`progression-step ${idx === steps.length - 1 ? 'current' : ''}`}>
-                      <div className="step-label">{step.label}</div>
-                      {step.type === 'college' && progressionLogos[step.school] && (
-                        <img
-                          src={progressionLogos[step.school]}
-                          alt={step.school}
-                          className="progression-logo"
-                        />
+                // Each transfer destination
+                sortedTransfers.forEach(transfer => {
+                  steps.push({
+                    type: 'transfer',
+                    label: transfer.transfer_year || 'Transfer',
+                    school: transfer.to_school,
+                    year: transfer.transfer_type || 'Portal',
+                    logo: progressionLogos[transfer.to_school]
+                  });
+                });
+              } else if (player.original_commitment && player.original_commitment !== player.school) {
+                // Different original commitment
+                steps.push({
+                  type: 'college',
+                  label: player.recruiting_class_year || 'Committed',
+                  school: player.original_commitment,
+                  year: null,
+                  logo: progressionLogos[player.original_commitment]
+                });
+                steps.push({
+                  type: 'transfer',
+                  label: 'Current',
+                  school: player.school,
+                  year: null,
+                  logo: progressionLogos[player.school]
+                });
+              } else if (player.school) {
+                steps.push({
+                  type: 'college',
+                  label: player.recruiting_class_year || 'Current',
+                  school: player.school,
+                  year: null,
+                  logo: progressionLogos[player.school]
+                });
+              }
+
+              return (
+                <div className="timeline-flow">
+                  {steps.map((step, idx) => (
+                    <React.Fragment key={idx}>
+                      <div className={`timeline-step ${step.type} ${idx === steps.length - 1 ? 'current' : ''}`}>
+                        <div className="step-year">{step.label}</div>
+                        <div className="step-content">
+                          {step.logo && (
+                            <img src={step.logo} alt={step.school} className="step-logo" />
+                          )}
+                          <div className="step-info">
+                            <span className="step-school-name">{step.school}</span>
+                            {step.year && <span className="step-detail">{step.year}</span>}
+                          </div>
+                        </div>
+                      </div>
+                      {idx < steps.length - 1 && (
+                        <div className="timeline-connector">
+                          <span className="connector-arrow">→</span>
+                        </div>
                       )}
-                      <div className="step-school">{step.school}</div>
-                    </div>
-                  </React.Fragment>
-                ));
-              })()}
-            </div>
+                    </React.Fragment>
+                  ))}
+                </div>
+              );
+            })()}
           </div>
         </div>
       )}
@@ -2114,28 +2097,37 @@ function PlayerDetail() {
         <div className="materials-timeline">
           {materialEvents && materialEvents.length > 0 ? (
             materialEvents.map(event => (
-              <div key={event.id} className="material-event">
-                <div className="event-header">
-                  <div className="event-date">
-                    {new Date(event.event_date).toLocaleDateString('en-US', {
-                      year: 'numeric',
-                      month: '2-digit',
-                      day: '2-digit'
-                    })}
+              <div key={event.id} className="material-event-card">
+                <div className="event-card-header">
+                  <div className="event-method-badge">
+                    {event.delivery_method || event.event_label?.split(' ')[0]}
                   </div>
-                  <div className="event-label">{event.event_label}</div>
+                  <div className="event-meta">
+                    <span className="event-date">
+                      {new Date(event.event_date).toLocaleDateString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric'
+                      })}
+                    </span>
+                    {event.copies > 1 && (
+                      <span className="event-copies">{event.copies} copies</span>
+                    )}
+                  </div>
                 </div>
-                <div className="event-materials">
-                  <ul>
-                    {event.materials_detailed && event.materials_detailed.map(material => (
-                      <li key={material.id}>
-                        <span className="material-name">{material.material_name}</span>
-                        <span className="material-category">{material.category}</span>
-                      </li>
-                    ))}
-                  </ul>
-                  {event.notes && <p className="event-notes">{event.notes}</p>}
+                <div className="event-materials-grid">
+                  {event.materials_detailed && event.materials_detailed.map(material => (
+                    <div key={material.id} className="material-chip">
+                      <span className="material-chip-name">{material.material_name}</span>
+                      <span className="material-chip-category">{material.category}</span>
+                    </div>
+                  ))}
                 </div>
+                {event.notes && (
+                  <div className="event-notes">
+                    <span className="notes-label">Notes:</span> {event.notes}
+                  </div>
+                )}
               </div>
             ))
           ) : (

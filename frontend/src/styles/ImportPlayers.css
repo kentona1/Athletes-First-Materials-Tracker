@@ -394,3 +394,56 @@
 .muted-text {
   color: #888;
 }
+
+/* School Warning Banner */
+.school-warning-banner {
+  display: flex;
+  gap: 1rem;
+  background: var(--status-not-signed-bg, #fff3e0);
+  border: 1px solid var(--status-not-signed, #e65100);
+  border-radius: 8px;
+  padding: 1rem 1.25rem;
+  margin-bottom: 1.5rem;
+}
+
+.school-warning-banner .warning-icon {
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.school-warning-banner .warning-content {
+  flex: 1;
+}
+
+.school-warning-banner strong {
+  color: var(--text-primary, #333);
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+.unmatched-schools-list {
+  margin: 0.5rem 0;
+  padding-left: 1.5rem;
+  font-size: 0.9rem;
+  color: var(--text-secondary, #555);
+}
+
+.unmatched-schools-list li {
+  margin-bottom: 0.25rem;
+}
+
+.school-warning-banner .warning-tip {
+  font-size: 0.85rem;
+  color: var(--text-tertiary, #666);
+  margin: 0.75rem 0 0;
+}
+
+.school-warning-banner .warning-tip a {
+  color: var(--accent-primary, #E52534);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.school-warning-banner .warning-tip a:hover {
+  text-decoration: underline;
+}

@@ -147,10 +147,8 @@ function Agents() {
                 <th>Agent</th>
                 <th>Total Players</th>
                 <th>Signed</th>
-                <th>Missed</th>
-                <th>Walked Away</th>
+                <th>Not Signed</th>
                 <th>Returned</th>
-                <th>No Meeting</th>
                 <th>Materials</th>
                 <th>Conversion Rate</th>
               </tr>
@@ -165,10 +163,8 @@ function Agents() {
                   </td>
                   <td>{agent.total_players}</td>
                   <td className="success-text">{agent.signed}</td>
-                  <td>{agent.missed}</td>
-                  <td>{agent.walked_away}</td>
+                  <td>{agent.not_signed}</td>
                   <td>{agent.returned}</td>
-                  <td>{agent.no_meeting}</td>
                   <td>{agent.total_materials}</td>
                   <td>
                     <span className="conversion-rate">

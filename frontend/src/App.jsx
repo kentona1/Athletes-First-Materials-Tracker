@@ -3,6 +3,10 @@ import { BrowserRouter as Router, Routes, Route, Link, Navigate } from 'react-ro
 import axios from './api/axios';
 import './styles/App.css';
 
+// Import theme system
+import { ThemeProvider } from './contexts/ThemeContext';
+import ThemeToggle from './components/ThemeToggle';
+
 // Import pages
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
@@ -17,6 +21,8 @@ import UserManagement from './pages/UserManagement';
 import Schools from './pages/Schools';
 import ImportPlayers from './pages/ImportPlayers';
 import EditPlayer from './pages/EditPlayer';
+import SchoolCleanup from './pages/SchoolCleanup';
+import PositionManager from './pages/PositionManager';
 
 function App() {
   const [user, setUser] = useState(null);
@@ -52,14 +58,23 @@ function App() {
   };
 
   if (loading) {
-    return <div className="loading">Loading...</div>;
+    return (
+      <ThemeProvider>
+        <div className="loading">Loading...</div>
+      </ThemeProvider>
+    );
   }
 
   if (!user) {
-    return <Login onLogin={handleLogin} />;
+    return (
+      <ThemeProvider>
+        <Login onLogin={handleLogin} />
+      </ThemeProvider>
+    );
   }
 
   return (
+    <ThemeProvider>
     <Router>
       <div className="app">
         <nav className="navbar">
@@ -81,6 +96,7 @@ function App() {
             )}
           </ul>
           <div className="nav-user">
+            <ThemeToggle />
             <span className="user-name">{user.username}</span>
             <span className="user-role">({user.role})</span>
             <button onClick={handleLogout} className="btn btn-small btn-secondary">
@@ -103,6 +119,8 @@ function App() {
             {user.role === 'admin' && (
               <>
                 <Route path="/schools" element={<Schools />} />
+                <Route path="/schools/cleanup" element={<SchoolCleanup />} />
+                <Route path="/positions" element={<PositionManager />} />
                 <Route path="/users" element={<UserManagement />} />
                 <Route path="/import" element={<ImportPlayers />} />
               </>
@@ -112,6 +130,7 @@ function App() {
         </main>
       </div>
     </Router>
+    </ThemeProvider>
   );
 }
 

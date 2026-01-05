@@ -1,214 +1,460 @@
+/* ========================================
+   AGENTS PAGE - ESPN MAGAZINE EDITORIAL STYLE
+   Professional agent management interface
+   ======================================== */
+
 .agents-page {
-  max-width: 1400px;
+  max-width: 1600px;
+  animation: fadeIn 0.4s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 .agents-page h2 {
-  margin-bottom: 1.5rem;
+  font-family: var(--font-display);
+  font-size: 2.5rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--text-primary);
+  text-transform: uppercase;
+  margin-bottom: var(--space-xl);
+  position: relative;
+  padding-bottom: var(--space-md);
+}
+
+.agents-page h2::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 48px;
+  height: 4px;
+  background: var(--accent-primary);
 }
 
 .agents-page h3 {
-  margin-bottom: 1rem;
-  color: #333;
+  font-family: var(--font-display);
+  font-size: 1.125rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--text-primary);
+  text-transform: uppercase;
+  margin-bottom: var(--space-lg);
 }
 
-/* Tabs styling */
+/* ----------------------------------------
+   TABS STYLING
+   ---------------------------------------- */
 .tabs {
   display: flex;
-  gap: 0.5rem;
-  margin-bottom: 2rem;
-  border-bottom: 2px solid #dee2e6;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-xl);
+  padding-bottom: var(--space-md);
+  border-bottom: 1px solid var(--border-light);
 }
 
 .tab {
-  padding: 0.75rem 1.5rem;
-  background: none;
-  border: none;
-  border-bottom: 3px solid transparent;
+  padding: var(--space-sm) var(--space-xl);
+  background: transparent;
+  border: 1px solid var(--border-medium);
+  border-bottom: none;
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
   cursor: pointer;
-  font-size: 1rem;
-  font-weight: 500;
-  color: #6c757d;
-  transition: all 0.2s;
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-tertiary);
+  transition: all var(--transition-fast);
+  position: relative;
+}
+
+.tab::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: transparent;
+  transition: background var(--transition-fast);
 }
 
 .tab:hover {
-  color: #007bff;
-  background-color: #f8f9fa;
+  color: var(--text-secondary);
+  background: var(--bg-tertiary);
 }
 
 .tab.active {
-  color: #007bff;
-  border-bottom-color: #007bff;
+  color: var(--accent-primary);
+  background: var(--bg-card);
+  border-color: var(--border-medium);
 }
 
-/* Tables styling */
+.tab.active::after {
+  background: var(--accent-primary);
+}
+
+/* ----------------------------------------
+   TABLES STYLING
+   ---------------------------------------- */
 .agents-table {
-  background: white;
-  padding: 2rem;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+  box-shadow: var(--shadow-card);
+}
+
+.agents-table h3 {
+  padding: var(--space-lg) var(--space-xl) var(--space-md);
+  margin: 0;
+  border-bottom: none;
 }
 
 .agents-table table {
   width: 100%;
-  border-collapse: collapse;
 }
 
-.agents-table th {
-  text-align: left;
-  padding: 1rem;
-  background: #f8f9fa;
-  border-bottom: 2px solid #dee2e6;
-  font-weight: 600;
-  color: #495057;
+.agents-table thead th {
+  background: var(--bg-tertiary);
+  border-bottom: 2px solid var(--accent-primary);
 }
 
 .agents-table td {
-  padding: 1rem;
-  border-bottom: 1px solid #dee2e6;
+  vertical-align: middle;
 }
 
-.agents-table tr:hover {
-  background-color: #f8f9fa;
+.agents-table tbody tr {
+  animation: rowFadeIn 0.3s ease-out both;
 }
+
+@keyframes rowFadeIn {
+  from {
+    opacity: 0;
+    transform: translateX(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Staggered row animations */
+.agents-table tbody tr:nth-child(1) { animation-delay: 0.05s; }
+.agents-table tbody tr:nth-child(2) { animation-delay: 0.1s; }
+.agents-table tbody tr:nth-child(3) { animation-delay: 0.15s; }
+.agents-table tbody tr:nth-child(4) { animation-delay: 0.2s; }
+.agents-table tbody tr:nth-child(5) { animation-delay: 0.25s; }
+.agents-table tbody tr:nth-child(n+6) { animation-delay: 0.3s; }
 
 .success-text {
-  color: #28a745;
+  color: var(--accent-green);
+  font-family: var(--font-display);
+  font-size: 1.1rem;
   font-weight: 600;
 }
 
 .conversion-rate {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
   font-weight: 600;
-  color: #007bff;
+  color: var(--accent-blue);
+  background: var(--status-active-bg);
+  padding: var(--space-xs) var(--space-sm);
+  border-radius: var(--radius-sm);
+  display: inline-block;
 }
 
-/* Management table specific styles */
+/* ----------------------------------------
+   MANAGEMENT TABLE SPECIFIC
+   ---------------------------------------- */
 .agents-management .inactive-row {
-  opacity: 0.6;
-  background-color: #f8f9fa;
+  opacity: 0.5;
+  background: var(--bg-tertiary);
+}
+
+.agents-management .inactive-row:hover {
+  opacity: 0.7;
 }
 
 .edit-input {
-  padding: 0.5rem;
-  border: 1px solid #ced4da;
-  border-radius: 4px;
+  padding: var(--space-sm) var(--space-md);
+  background: var(--bg-card);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  color: var(--text-primary);
   width: 100%;
-  font-size: 0.9rem;
+  transition: all var(--transition-fast);
+}
+
+.edit-input::placeholder {
+  color: var(--text-muted);
 }
 
 .edit-input:focus {
   outline: none;
-  border-color: #007bff;
-  box-shadow: 0 0 0 0.2rem rgba(0,123,255,0.25);
+  border-color: var(--accent-primary);
+  background: var(--bg-secondary);
+  box-shadow: 0 0 0 2px var(--accent-glow);
 }
 
-/* Button styles */
+/* ----------------------------------------
+   BUTTON STYLES
+   ---------------------------------------- */
 .btn-small {
-  padding: 0.375rem 0.75rem;
-  font-size: 0.875rem;
-  border-radius: 4px;
+  padding: var(--space-xs) var(--space-sm);
+  font-family: var(--font-body);
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  border-radius: var(--radius-sm);
   border: none;
   cursor: pointer;
-  transition: background-color 0.2s;
-  font-weight: 500;
+  transition: all var(--transition-fast);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .btn-small.btn-primary {
-  background-color: #007bff;
+  background: var(--accent-primary);
   color: white;
 }
 
 .btn-small.btn-primary:hover {
-  background-color: #0056b3;
+  background: var(--accent-primary-hover);
+  transform: translateY(-1px);
 }
 
 .btn-small.btn-secondary {
-  background-color: #6c757d;
-  color: white;
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  border: 1px solid var(--border-medium);
 }
 
 .btn-small.btn-secondary:hover {
-  background-color: #5a6268;
+  background: var(--bg-card-hover);
+  border-color: var(--border-dark);
 }
 
 .btn-small.btn-warning {
-  background-color: #ffc107;
-  color: #212529;
+  background: var(--accent-gold);
+  color: var(--text-inverse);
 }
 
 .btn-small.btn-warning:hover {
-  background-color: #e0a800;
+  filter: brightness(1.1);
+  transform: translateY(-1px);
 }
 
 .btn-small.btn-success {
-  background-color: #28a745;
+  background: var(--accent-green);
   color: white;
 }
 
 .btn-small.btn-success:hover {
-  background-color: #218838;
+  filter: brightness(1.1);
+  transform: translateY(-1px);
 }
 
-/* Status badges */
+/* ----------------------------------------
+   STATUS BADGES
+   ---------------------------------------- */
 .status-badge {
-  padding: 0.25rem 0.75rem;
-  border-radius: 12px;
-  font-size: 0.85rem;
-  font-weight: 600;
+  font-family: var(--font-body);
+  font-size: 0.65rem;
+  font-weight: 700;
   text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: var(--space-xs) var(--space-sm);
+  border-radius: var(--radius-sm);
   display: inline-block;
 }
 
 .status-badge.active {
-  background-color: #d4edda;
-  color: #155724;
+  background: var(--status-signed-bg);
+  color: var(--status-signed);
 }
 
 .status-badge.inactive {
-  background-color: #f8d7da;
-  color: #721c24;
+  background: rgba(107, 114, 128, 0.1);
+  color: var(--text-muted);
 }
 
-/* Management header */
+/* ----------------------------------------
+   MANAGEMENT HEADER
+   ---------------------------------------- */
 .management-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 1rem;
+  margin-bottom: var(--space-lg);
+  padding-bottom: var(--space-md);
+  border-bottom: 1px solid var(--border-light);
 }
 
 .management-header h3 {
   margin: 0;
 }
 
-/* New agent row */
+.management-header .btn {
+  padding: var(--space-sm) var(--space-lg);
+}
+
+/* ----------------------------------------
+   NEW AGENT ROW
+   ---------------------------------------- */
 .new-agent-row {
-  background-color: #e8f5e9 !important;
+  background: var(--accent-green-soft) !important;
+  border-left: 3px solid var(--accent-green);
 }
 
 .new-agent-row:hover {
-  background-color: #c8e6c9 !important;
+  background: rgba(0, 135, 90, 0.15) !important;
 }
 
-/* Agent links */
+/* ----------------------------------------
+   AGENT LINKS
+   ---------------------------------------- */
 .agent-link {
-  color: #007bff;
+  font-family: var(--font-body);
+  font-weight: 600;
+  color: var(--text-primary);
   text-decoration: none;
+  transition: color var(--transition-fast);
+  display: inline-block;
 }
 
 .agent-link:hover {
-  text-decoration: underline;
-  color: #0056b3;
+  color: var(--accent-primary);
+  text-decoration: none;
 }
 
-/* Input groups for compact forms */
+.agent-link strong {
+  font-weight: 600;
+}
+
+/* ----------------------------------------
+   INPUT GROUPS
+   ---------------------------------------- */
 .name-inputs,
 .location-inputs {
   display: flex;
-  gap: 0.5rem;
+  gap: var(--space-sm);
 }
 
 .name-inputs .edit-input,
 .location-inputs .edit-input {
   flex: 1;
+}
+
+/* ----------------------------------------
+   RESPONSIVE DESIGN
+   ---------------------------------------- */
+@media (max-width: 1200px) {
+  .agents-table {
+    padding: var(--space-lg);
+  }
+}
+
+@media (max-width: 968px) {
+  .agents-page h2 {
+    font-size: 2rem;
+  }
+
+  .tabs {
+    flex-wrap: wrap;
+    gap: var(--space-xs);
+  }
+
+  .tab {
+    padding: var(--space-sm) var(--space-md);
+    font-size: 0.75rem;
+  }
+
+  .agents-table {
+    padding: var(--space-md);
+    overflow-x: auto;
+  }
+
+  .agents-table table {
+    min-width: 800px;
+  }
+
+  .management-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-md);
+  }
+}
+
+@media (max-width: 576px) {
+  .agents-page h2 {
+    font-size: 1.5rem;
+  }
+
+  .tabs {
+    width: 100%;
+  }
+
+  .tab {
+    flex: 1;
+    text-align: center;
+    padding: var(--space-sm);
+    font-size: 0.7rem;
+    letter-spacing: 0.03em;
+  }
+
+  .agents-table {
+    padding: var(--space-sm);
+    border-radius: var(--radius-lg);
+  }
+
+  .agents-page h3 {
+    font-size: 1rem;
+  }
+
+  .edit-input {
+    padding: var(--space-xs) var(--space-sm);
+    font-size: 0.8rem;
+  }
+
+  .btn-small {
+    padding: var(--space-xs) var(--space-sm);
+    font-size: 0.65rem;
+  }
+
+  .name-inputs,
+  .location-inputs {
+    flex-direction: column;
+  }
+}
+
+/* ----------------------------------------
+   SCROLLBAR FOR TABLE
+   ---------------------------------------- */
+.agents-table::-webkit-scrollbar {
+  height: 6px;
+}
+
+.agents-table::-webkit-scrollbar-track {
+  background: var(--bg-tertiary);
+  border-radius: 3px;
+}
+
+.agents-table::-webkit-scrollbar-thumb {
+  background: var(--text-muted);
+  border-radius: 3px;
+}
+
+.agents-table::-webkit-scrollbar-thumb:hover {
+  background: var(--text-tertiary);
 }

@@ -14,6 +14,13 @@ router.get('/recruiting-data', playersController.getRecruitingData.bind(playersC
 router.get('/recruiting-data-247', playersController.search247Recruiting.bind(playersController));
 router.get('/transfer-data', playersController.getTransferData.bind(playersController));
 router.get('/espn-details/:id', playersController.getESPNPlayerDetails.bind(playersController));
+
+// Position management (must be before :id routes)
+router.get('/positions', playersController.getPositions.bind(playersController));
+router.get('/positions/:position', playersController.getPlayersByPosition.bind(playersController));
+router.post('/positions/bulk-update', playersController.bulkUpdatePosition.bind(playersController));
+router.post('/positions/map', playersController.mapPosition.bind(playersController));
+
 router.get('/:id/transfers', playersController.getPlayerTransfers.bind(playersController));
 router.get('/:id', playersController.getPlayer.bind(playersController));
 router.post('/', playersController.createPlayer.bind(playersController));
@@ -23,6 +30,7 @@ router.delete('/:id', playersController.deletePlayer.bind(playersController));
 
 // Agent assignment
 router.post('/assign-agent', playersController.assignAgent.bind(playersController));
+router.post('/remove-agent', playersController.removeAgent.bind(playersController));
 
 // Player outcome/status management
 router.put('/:id/outcome', playersController.updatePlayerOutcome.bind(playersController));

@@ -135,7 +135,10 @@ function EditPlayer() {
       // Remove agents that were unselected
       for (const agentId of currentAgentIds) {
         if (!selectedAgents.includes(agentId)) {
-          // Would need a remove endpoint, skip for now
+          await axios.post('/api/players/remove-agent', {
+            playerId: parseInt(id),
+            agentId: agentId
+          });
         }
       }
 

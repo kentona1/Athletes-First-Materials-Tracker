@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import axios from '../api/axios';
 import '../styles/ImportPlayers.css';
 
@@ -180,6 +180,29 @@ function ImportPlayers() {
               </div>
             </div>
 
+            {/* School Mismatch Warning */}
+            {preview.unmatchedSchools?.length > 0 && (
+              <div className="school-warning-banner">
+                <span className="warning-icon">⚠️</span>
+                <div className="warning-content">
+                  <strong>{preview.unmatchedSchools.length} school name(s) don't match the database:</strong>
+                  <ul className="unmatched-schools-list">
+                    {preview.unmatchedSchools.slice(0, 5).map((school, i) => (
+                      <li key={i}>{school}</li>
+                    ))}
+                    {preview.unmatchedSchools.length > 5 && (
+                      <li>...and {preview.unmatchedSchools.length - 5} more</li>
+                    )}
+                  </ul>
+                  <p className="warning-tip">
+                    These will be imported as-is. Use{' '}
+                    <Link to="/schools/cleanup">School Name Cleanup</Link>{' '}
+                    to normalize them after import.
+                  </p>
+                </div>
+              </div>
+            )}
+
             <p className="preview-note">
               Showing first {preview.preview.length} of {preview.totalRows} players
             </p>
@@ -213,7 +236,12 @@ function ImportPlayers() {
                            player.player_type === 'high_school' ? 'HS' : 'CFB'}
                         </span>
                       </td>
-                      <td>{player.school}</td>
+                      <td>
+                        {player.school}
+                        {player.school && !player.school_matched && (
+                          <span className="warning-badge" title="School not found in database">⚠</span>
+                        )}
+                      </td>
                       <td>{player.class_year || '-'}</td>
                       <td>
                         {player.agent}
@@ -248,7 +276,7 @@ function ImportPlayers() {
 
             <div className="preview-legend">
               <div className="legend-item">
-                <span className="warning-badge">⚠</span> Agent not found in system (won't be assigned)
+                <span className="warning-badge">⚠</span> Agent or school not found in system
               </div>
               <div className="legend-item">
                 <span className="draft-badge drafted">Rd 1</span> = Drafted (Round shown)

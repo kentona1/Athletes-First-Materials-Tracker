@@ -89,3 +89,44 @@
   border-radius: 4px;
   margin-top: 4px;
 }
+
+/* Valid state - school selected from database */
+.school-autocomplete-input.valid {
+  border-color: var(--status-signed, #2e7d32);
+  padding-right: 2.5rem;
+}
+
+.school-autocomplete.has-selection {
+  position: relative;
+}
+
+.school-check-icon {
+  position: absolute;
+  right: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--status-signed, #2e7d32);
+  font-weight: bold;
+  pointer-events: none;
+}
+
+/* Warning state - typed but not selected */
+.school-autocomplete-input.warning {
+  border-color: var(--status-not-signed, #e65100);
+  background-color: var(--status-not-signed-bg, #fff8e1);
+}
+
+.school-autocomplete-input.warning:focus {
+  border-color: var(--status-not-signed, #e65100);
+  box-shadow: 0 0 0 0.2rem rgba(230, 81, 0, 0.15);
+}
+
+.school-validation-warning {
+  margin-top: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.85rem;
+  color: var(--status-not-signed, #e65100);
+  background: var(--status-not-signed-bg, #fff8e1);
+  border: 1px solid var(--status-not-signed, #e65100);
+  border-radius: 4px;
+}

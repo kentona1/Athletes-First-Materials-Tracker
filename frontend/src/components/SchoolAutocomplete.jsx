@@ -7,6 +7,7 @@ function SchoolAutocomplete({ value, onChange, required = false }) {
   const [suggestions, setSuggestions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [selectedSchool, setSelectedSchool] = useState(null);
+  const [hasTypedWithoutSelect, setHasTypedWithoutSelect] = useState(false);
   const wrapperRef = useRef(null);
 
   // Update search term when value prop changes
@@ -30,11 +31,13 @@ function SchoolAutocomplete({ value, onChange, required = false }) {
     const query = e.target.value;
     setSearchTerm(query);
     setSelectedSchool(null);
+    setHasTypedWithoutSelect(query.length >= 2);
 
     if (query.length < 2) {
       setSuggestions([]);
       setShowSuggestions(false);
       onChange('', '');
+      setHasTypedWithoutSelect(false);
       return;
     }
 
@@ -56,12 +59,13 @@ function SchoolAutocomplete({ value, onChange, required = false }) {
     setSelectedSchool(school);
     setShowSuggestions(false);
     setSuggestions([]);
+    setHasTypedWithoutSelect(false);
 
     // Pass both school name and conference to parent
     onChange(school.school, school.conference || '');
   };
 
-  // Handle blur - if no valid school selected, clear
+  // Handle blur - if no valid school selected, show warning
   const handleBlur = () => {
     setTimeout(() => {
       if (!selectedSchool && searchTerm) {
@@ -72,13 +76,18 @@ function SchoolAutocomplete({ value, onChange, required = false }) {
         );
         if (exactMatch) {
           handleSelectSchool(exactMatch);
+        } else {
+          // Keep the warning state so user knows they need to select
+          setHasTypedWithoutSelect(true);
         }
       }
     }, 200);
   };
 
+  const showWarning = hasTypedWithoutSelect && !selectedSchool && searchTerm.length >= 2;
+
   return (
-    <div className="school-autocomplete" ref={wrapperRef}>
+    <div className={`school-autocomplete ${showWarning ? 'has-warning' : ''} ${selectedSchool ? 'has-selection' : ''}`} ref={wrapperRef}>
       <input
         type="text"
         value={searchTerm}
@@ -87,8 +96,12 @@ function SchoolAutocomplete({ value, onChange, required = false }) {
         onBlur={handleBlur}
         placeholder="Search for a school..."
         required={required}
-        className="school-autocomplete-input"
+        className={`school-autocomplete-input ${showWarning ? 'warning' : ''} ${selectedSchool ? 'valid' : ''}`}
       />
+
+      {selectedSchool && (
+        <span className="school-check-icon" title="School verified">✓</span>
+      )}
 
       {showSuggestions && suggestions.length > 0 && (
         <ul className="school-suggestions">
@@ -125,6 +138,12 @@ function SchoolAutocomplete({ value, onChange, required = false }) {
       {showSuggestions && suggestions.length === 0 && searchTerm.length >= 2 && (
         <div className="school-no-results">
           No schools found matching "{searchTerm}"
+        </div>
+      )}
+
+      {showWarning && !showSuggestions && (
+        <div className="school-validation-warning">
+          Please select a school from the dropdown
         </div>
       )}
     </div>

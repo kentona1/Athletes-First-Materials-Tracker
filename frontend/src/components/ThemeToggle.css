@@ -1,0 +1,110 @@
+/* ========================================
+   THEME TOGGLE - ESPN MAGAZINE STYLE
+   Premium toggle switch with smooth animations
+   ======================================== */
+
+.theme-toggle {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  outline: none;
+}
+
+.theme-toggle-track {
+  position: relative;
+  width: 56px;
+  height: 28px;
+  background: var(--toggle-track);
+  border-radius: 14px;
+  border: 2px solid var(--toggle-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 6px;
+  transition: all var(--transition-base);
+  overflow: hidden;
+}
+
+.theme-toggle:hover .theme-toggle-track {
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+}
+
+.theme-toggle:focus-visible .theme-toggle-track {
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+}
+
+.theme-toggle-icon {
+  width: 14px;
+  height: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1;
+  transition: all var(--transition-base);
+}
+
+.theme-toggle-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.theme-toggle-icon.sun {
+  color: var(--toggle-sun);
+}
+
+.theme-toggle-icon.moon {
+  color: var(--toggle-moon);
+}
+
+.theme-toggle-thumb {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  background: var(--accent-primary);
+  border-radius: 50%;
+  left: 4px;
+  transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* Dark mode state */
+[data-theme="dark"] .theme-toggle-thumb {
+  left: calc(100% - 24px);
+}
+
+[data-theme="dark"] .theme-toggle-icon.sun {
+  opacity: 0.4;
+}
+
+[data-theme="light"] .theme-toggle-icon.moon {
+  opacity: 0.4;
+}
+
+/* Mobile adjustments */
+@media (max-width: 576px) {
+  .theme-toggle-track {
+    width: 48px;
+    height: 24px;
+    padding: 0 4px;
+  }
+
+  .theme-toggle-icon {
+    width: 12px;
+    height: 12px;
+  }
+
+  .theme-toggle-thumb {
+    width: 16px;
+    height: 16px;
+    left: 4px;
+  }
+
+  [data-theme="dark"] .theme-toggle-thumb {
+    left: calc(100% - 20px);
+  }
+}

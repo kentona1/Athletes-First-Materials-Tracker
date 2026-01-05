@@ -215,6 +215,41 @@ function extractYearFromFilename(filename) {
 }
 
 class ImportController {
+  // Lookup school from schools table - returns normalized school info or null
+  async lookupSchool(schoolName) {
+    if (!schoolName) return null;
+
+    const nameLower = schoolName.toLowerCase().trim();
+
+    // Try exact match first
+    let school = await db.get(`
+      SELECT id, school, conference FROM schools
+      WHERE
+        LOWER(school) = ? OR
+        LOWER(abbreviation) = ? OR
+        LOWER(alt_name1) = ? OR
+        LOWER(alt_name2) = ? OR
+        LOWER(alt_name3) = ?
+    `, [nameLower, nameLower, nameLower, nameLower, nameLower]);
+
+    if (school) return school;
+
+    // Try fuzzy match
+    const searchTerm = `%${schoolName}%`;
+    school = await db.get(`
+      SELECT id, school, conference FROM schools
+      WHERE
+        LOWER(school) LIKE LOWER(?) OR
+        LOWER(abbreviation) LIKE LOWER(?) OR
+        LOWER(alt_name1) LIKE LOWER(?) OR
+        LOWER(alt_name2) LIKE LOWER(?) OR
+        LOWER(alt_name3) LIKE LOWER(?)
+      LIMIT 1
+    `, [searchTerm, searchTerm, searchTerm, searchTerm, searchTerm]);
+
+    return school || null;
+  }
+
   // Preview CSV data before importing
   async previewCSV(req, res) {
     try {
@@ -248,8 +283,14 @@ class ImportController {
       // Get recruiting cycle year from filename
       const recruitingYear = extractYearFromFilename(filename);
 
+      // Build a cache of school lookups to avoid duplicate queries
+      const schoolCache = {};
+      const unmatchedSchools = new Set();
+
       // Process and preview records
-      const preview = records.slice(0, 50).map((row, index) => {
+      const preview = [];
+      for (let index = 0; index < Math.min(records.length, 50); index++) {
+        const row = records[index];
         const nameCol = Object.keys(row).find(k => k.includes('NAME'));
         const nameData = parseName(row[nameCol]);
         const name = nameData.fullName;
@@ -271,6 +312,32 @@ class ImportController {
         let school = row[schoolCol]?.trim() || '';
         school = school.replace(/\s*\(Transfer\)\s*/gi, '').trim();
 
+        // Check if school matches database
+        let schoolMatched = false;
+        let normalizedSchool = school;
+        let normalizedConference = row[confCol]?.trim() || '';
+
+        if (school && eligInfo.player_type !== 'veteran') {
+          if (schoolCache[school.toLowerCase()] !== undefined) {
+            const cached = schoolCache[school.toLowerCase()];
+            if (cached) {
+              schoolMatched = true;
+              normalizedSchool = cached.school;
+              normalizedConference = cached.conference || normalizedConference;
+            }
+          } else {
+            const matchedSchool = await this.lookupSchool(school);
+            schoolCache[school.toLowerCase()] = matchedSchool;
+            if (matchedSchool) {
+              schoolMatched = true;
+              normalizedSchool = matchedSchool.school;
+              normalizedConference = matchedSchool.conference || normalizedConference;
+            } else {
+              unmatchedSchools.add(school);
+            }
+          }
+        }
+
         const agentName = row[agentCol]?.trim();
         const matchedAgentId = agentName ? (agentMap[agentName.toLowerCase()] || agentMap[agentName.split('/')[0].trim().toLowerCase()]) : null;
 
@@ -278,12 +345,14 @@ class ImportController {
         const materialEvents = parseMaterials(row[materialsCol]);
         const totalMaterials = materialEvents.reduce((sum, e) => sum + e.materials.length, 0);
 
-        return {
+        preview.push({
           row: index + 2,
           name,
           position: row[posCol]?.trim() || '',
           school: school,
-          conference: row[confCol]?.trim() || '',
+          normalized_school: normalizedSchool,
+          school_matched: schoolMatched || eligInfo.player_type === 'veteran',
+          conference: normalizedConference,
           class_year: eligInfo.class_year,
           player_type: eligInfo.player_type,
           status: parseCommitToStatus(row[commitCol]),
@@ -297,8 +366,8 @@ class ImportController {
           materials_preview: materialEvents.slice(0, 2).map(e =>
             `${e.date} (${e.delivery_method}): ${e.materials.slice(0, 2).join(', ')}${e.materials.length > 2 ? '...' : ''}`
           ).join(' | ')
-        };
-      });
+        });
+      }
 
       res.json({
         success: true,
@@ -307,7 +376,9 @@ class ImportController {
           recruitingYear,
           totalRows: records.length,
           preview,
-          agents: agents.map(a => ({ id: a.id, name: a.name }))
+          agents: agents.map(a => ({ id: a.id, name: a.name })),
+          unmatchedSchools: Array.from(unmatchedSchools),
+          schoolWarningCount: unmatchedSchools.size
         }
       });
 
@@ -388,7 +459,16 @@ class ImportController {
           let school = row[schoolCol]?.trim() || '';
           school = school.replace(/\s*\(Transfer\)\s*/gi, '').trim();
 
-          const conference = row[confCol]?.trim() || '';
+          let conference = row[confCol]?.trim() || '';
+
+          // Try to normalize school name from database
+          if (school && eligInfo.player_type !== 'veteran') {
+            const matchedSchool = await this.lookupSchool(school);
+            if (matchedSchool) {
+              school = matchedSchool.school;
+              conference = matchedSchool.conference || conference;
+            }
+          }
           const position = row[posCol]?.trim() || '';
           const status = parseCommitToStatus(row[commitCol]);
           const draftRound = parseDraftRound(row[resultCol]);

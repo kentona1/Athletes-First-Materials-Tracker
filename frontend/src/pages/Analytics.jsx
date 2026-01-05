@@ -3,7 +3,17 @@ import axios from '../api/axios';
 import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import AdvancedHeatMap from '../components/AdvancedHeatMap';
 
-const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82ca9d'];
+// ESPN Editorial color palette - works in both modes
+const CHART_COLORS = {
+  // Outcome colors
+  signed: '#00875A',      // Green for success
+  notSigned: '#E52534',   // ESPN red for not signed
+  active: '#0066CC',      // Blue for active/in progress
+
+  // Bar chart colors (monotone with accent)
+  primary: '#505050',     // Muted gray for "total" bars
+  accent: '#00875A',      // Green accent for "signed" bars
+};
 
 function Analytics() {
   const [analytics, setAnalytics] = useState(null);
@@ -35,10 +45,11 @@ function Analytics() {
     return <div className="error">No analytics data available</div>;
   }
 
+  // Outcome data with specific colors for each status
   const outcomeData = [
-    { name: 'Signed', value: analytics.overall.signed },
-    { name: 'Not Signed', value: analytics.overall.not_signed },
-    { name: 'Active', value: analytics.overall.returned }
+    { name: 'Signed', value: analytics.overall.signed, color: CHART_COLORS.signed },
+    { name: 'Not Signed', value: analytics.overall.not_signed, color: CHART_COLORS.notSigned },
+    { name: 'Active', value: analytics.overall.returned, color: CHART_COLORS.active }
   ].filter(item => item.value > 0);
 
   return (
@@ -92,12 +103,14 @@ function Analytics() {
                 cy="50%"
                 labelLine={false}
                 label={({name, percent}) => `${name} ${(percent * 100).toFixed(0)}%`}
-                outerRadius={80}
+                outerRadius={90}
+                innerRadius={40}
                 fill="#8884d8"
                 dataKey="value"
+                stroke="none"
               >
                 {outcomeData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  <Cell key={`cell-${index}`} fill={entry.color} />
                 ))}
               </Pie>
               <Tooltip />
@@ -108,14 +121,14 @@ function Analytics() {
         <div className="chart-card">
           <h3>By Position</h3>
           <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={analytics.byPosition?.slice(0, 10)}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="position" />
-              <YAxis />
+            <BarChart data={analytics.byPosition?.slice(0, 10)} barGap={2}>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} />
+              <XAxis dataKey="position" tick={{ fontSize: 11 }} />
+              <YAxis tick={{ fontSize: 11 }} />
               <Tooltip />
               <Legend />
-              <Bar dataKey="count" fill="#0088FE" name="Total" />
-              <Bar dataKey="signed" fill="#00C49F" name="Signed" />
+              <Bar dataKey="count" fill={CHART_COLORS.primary} name="Total" radius={[2, 2, 0, 0]} />
+              <Bar dataKey="signed" fill={CHART_COLORS.accent} name="Signed" radius={[2, 2, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -123,14 +136,14 @@ function Analytics() {
         <div className="chart-card">
           <h3>By Conference</h3>
           <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={analytics.byConference?.slice(0, 10)}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="conference" />
-              <YAxis />
+            <BarChart data={analytics.byConference?.slice(0, 10)} barGap={2}>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} />
+              <XAxis dataKey="conference" tick={{ fontSize: 10 }} angle={-20} textAnchor="end" height={60} />
+              <YAxis tick={{ fontSize: 11 }} />
               <Tooltip />
               <Legend />
-              <Bar dataKey="count" fill="#FFBB28" name="Total" />
-              <Bar dataKey="signed" fill="#00C49F" name="Signed" />
+              <Bar dataKey="count" fill={CHART_COLORS.primary} name="Total" radius={[2, 2, 0, 0]} />
+              <Bar dataKey="signed" fill={CHART_COLORS.accent} name="Signed" radius={[2, 2, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>

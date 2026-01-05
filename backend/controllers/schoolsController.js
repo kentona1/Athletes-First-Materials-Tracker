@@ -251,6 +251,180 @@ class SchoolsController {
       res.status(500).json({ success: false, error: error.message });
     }
   }
+
+  // Find all school names in players table that don't match schools table
+  async findMismatches(req, res) {
+    try {
+      // Get all unique school names from players
+      const playerSchools = await db.query(`
+        SELECT DISTINCT school, COUNT(*) as player_count
+        FROM players
+        WHERE school IS NOT NULL AND school != ''
+        GROUP BY school
+        ORDER BY school
+      `);
+
+      // Get all schools from the schools table
+      const allSchools = await db.query('SELECT * FROM schools');
+
+      const mismatches = [];
+      const matched = [];
+
+      for (const ps of playerSchools) {
+        const playerSchoolLower = ps.school.toLowerCase().trim();
+
+        // Try to find a match
+        const match = allSchools.find(s => {
+          const schoolLower = s.school?.toLowerCase() || '';
+          const abbrLower = s.abbreviation?.toLowerCase() || '';
+          const alt1Lower = s.alt_name1?.toLowerCase() || '';
+          const alt2Lower = s.alt_name2?.toLowerCase() || '';
+          const alt3Lower = s.alt_name3?.toLowerCase() || '';
+
+          // Exact match
+          if (playerSchoolLower === schoolLower ||
+              playerSchoolLower === abbrLower ||
+              playerSchoolLower === alt1Lower ||
+              playerSchoolLower === alt2Lower ||
+              playerSchoolLower === alt3Lower) {
+            return true;
+          }
+
+          return false;
+        });
+
+        if (match) {
+          matched.push({
+            playerSchool: ps.school,
+            playerCount: ps.player_count,
+            matchedSchool: match.school,
+            matchedSchoolId: match.id
+          });
+        } else {
+          // Try to find suggestions (fuzzy match)
+          const suggestions = allSchools
+            .filter(s => {
+              const schoolLower = s.school?.toLowerCase() || '';
+              // Check if player school contains the database school name or vice versa
+              return playerSchoolLower.includes(schoolLower.substring(0, 4)) ||
+                     schoolLower.includes(playerSchoolLower.substring(0, 4));
+            })
+            .slice(0, 5)
+            .map(s => ({ id: s.id, school: s.school, conference: s.conference, logo: s.logo }));
+
+          mismatches.push({
+            playerSchool: ps.school,
+            playerCount: ps.player_count,
+            suggestions
+          });
+        }
+      }
+
+      res.json({
+        success: true,
+        data: {
+          mismatches,
+          matched,
+          totalMismatched: mismatches.length,
+          totalMatched: matched.length,
+          totalUnique: playerSchools.length
+        }
+      });
+    } catch (error) {
+      console.error('Error finding school mismatches:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  }
+
+  // Batch update players with a specific school name to a corrected school
+  async fixSchoolMismatch(req, res) {
+    try {
+      const { oldSchoolName, newSchoolId } = req.body;
+
+      if (!oldSchoolName || !newSchoolId) {
+        return res.status(400).json({
+          success: false,
+          error: 'oldSchoolName and newSchoolId are required'
+        });
+      }
+
+      // Get the correct school info
+      const correctSchool = await db.get('SELECT * FROM schools WHERE id = ?', [newSchoolId]);
+
+      if (!correctSchool) {
+        return res.status(404).json({
+          success: false,
+          error: 'Target school not found'
+        });
+      }
+
+      // Update all players with the old school name
+      const result = await db.run(`
+        UPDATE players
+        SET school = ?, conference = ?, updated_at = CURRENT_TIMESTAMP
+        WHERE school = ?
+      `, [correctSchool.school, correctSchool.conference, oldSchoolName]);
+
+      res.json({
+        success: true,
+        data: {
+          oldSchoolName,
+          newSchoolName: correctSchool.school,
+          newConference: correctSchool.conference,
+          playersUpdated: result.changes
+        }
+      });
+    } catch (error) {
+      console.error('Error fixing school mismatch:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  }
+
+  // Batch fix multiple mismatches at once
+  async fixMultipleMismatches(req, res) {
+    try {
+      const { fixes } = req.body; // Array of { oldSchoolName, newSchoolId }
+
+      if (!fixes || !Array.isArray(fixes)) {
+        return res.status(400).json({
+          success: false,
+          error: 'fixes array is required'
+        });
+      }
+
+      const results = [];
+
+      for (const fix of fixes) {
+        if (!fix.oldSchoolName || !fix.newSchoolId) continue;
+
+        const correctSchool = await db.get('SELECT * FROM schools WHERE id = ?', [fix.newSchoolId]);
+        if (!correctSchool) continue;
+
+        const result = await db.run(`
+          UPDATE players
+          SET school = ?, conference = ?, updated_at = CURRENT_TIMESTAMP
+          WHERE school = ?
+        `, [correctSchool.school, correctSchool.conference, fix.oldSchoolName]);
+
+        results.push({
+          oldSchoolName: fix.oldSchoolName,
+          newSchoolName: correctSchool.school,
+          playersUpdated: result.changes
+        });
+      }
+
+      res.json({
+        success: true,
+        data: {
+          totalFixes: results.length,
+          results
+        }
+      });
+    } catch (error) {
+      console.error('Error fixing multiple mismatches:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  }
 }
 
 module.exports = new SchoolsController();

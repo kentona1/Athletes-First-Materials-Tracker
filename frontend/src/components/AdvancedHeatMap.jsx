@@ -310,18 +310,36 @@ function AdvancedHeatMap({ filters = {} }) {
     };
   }, [filteredSchools, stateDensity]);
 
-  // Heat color for state
+  // Check if dark mode (for dynamic color calculations)
+  const isDarkMode = typeof document !== 'undefined' &&
+    document.documentElement.getAttribute('data-theme') === 'dark';
+
+  // Heat color for state - adapts to light/dark mode
   const getHeatColor = useCallback((stateName) => {
     const abbrev = STATE_ABBREVS[stateName];
     const count = stateDensity[abbrev] || stateDensity[stateName] || 0;
-    if (count === 0) return '#0d1220';
+
+    if (count === 0) {
+      // Return theme-appropriate base color
+      return isDarkMode ? '#0d1220' : '#E8EAED';
+    }
+
     const intensity = Math.min(count / maxDensity, 1);
-    // Dark to vibrant cyan-teal gradient
-    const r = Math.round(10 + intensity * 30);
-    const g = Math.round(20 + intensity * 200);
-    const b = Math.round(40 + intensity * 180);
-    return `rgb(${r}, ${g}, ${b})`;
-  }, [stateDensity, maxDensity]);
+
+    if (isDarkMode) {
+      // Dark mode: dark to vibrant teal
+      const r = Math.round(10 + intensity * 30);
+      const g = Math.round(20 + intensity * 200);
+      const b = Math.round(40 + intensity * 180);
+      return `rgb(${r}, ${g}, ${b})`;
+    } else {
+      // Light mode: light gray to green
+      const r = Math.round(232 - intensity * 200);
+      const g = Math.round(234 - intensity * 99);
+      const b = Math.round(237 - intensity * 147);
+      return `rgb(${r}, ${g}, ${b})`;
+    }
+  }, [stateDensity, maxDensity, isDarkMode]);
 
   const getColor = (conf) => CONFERENCE_COLORS[conf] || CONFERENCE_COLORS.default;
 
@@ -460,7 +478,10 @@ function AdvancedHeatMap({ filters = {} }) {
                 geographies.map(geo => {
                   const stateName = geo.properties.name;
                   const isHeatmap = viewMode === 'heatmap';
-                  const fillColor = isHeatmap ? getHeatColor(stateName) : '#0d1220';
+                  const baseFill = isDarkMode ? '#0d1220' : '#E8EAED';
+                  const baseStroke = isDarkMode ? '#1e293b' : '#D0D4D8';
+                  const hoverFill = isDarkMode ? '#1a2535' : '#DDE0E4';
+                  const fillColor = isHeatmap ? getHeatColor(stateName) : baseFill;
                   const stateAbbrev = STATE_ABBREVS[stateName];
                   const stateCount = stateDensity[stateAbbrev] || 0;
 
@@ -469,7 +490,7 @@ function AdvancedHeatMap({ filters = {} }) {
                       key={geo.rsmKey}
                       geography={geo}
                       fill={fillColor}
-                      stroke="#1e293b"
+                      stroke={baseStroke}
                       strokeWidth={0.5}
                       onClick={() => handleStateClick(stateName)}
                       style={{
@@ -477,8 +498,8 @@ function AdvancedHeatMap({ filters = {} }) {
                         hover: {
                           outline: 'none',
                           fill: isHeatmap
-                            ? (stateCount > 0 ? getHeatColor(stateName) : '#1a2535')
-                            : '#1a2535',
+                            ? (stateCount > 0 ? getHeatColor(stateName) : hoverFill)
+                            : hoverFill,
                           cursor: 'pointer'
                         },
                         pressed: { outline: 'none' }
@@ -492,14 +513,15 @@ function AdvancedHeatMap({ filters = {} }) {
             {/* Pipeline Lines - FROM HQ TO Schools */}
             {viewMode === 'pipelines' && pipelineData.map((conn, i) => {
               const isHighlighted = highlightedConferences.size === 0 || highlightedConferences.has(conn.conference);
+              const inactiveStroke = isDarkMode ? '#3a4556' : '#C0C4C8';
               return (
                 <Line
                   key={`line-${conn.school}`}
                   from={conn.from}
                   to={conn.to}
-                  stroke={isHighlighted ? getColor(conn.conference).primary : '#3a4556'}
+                  stroke={isHighlighted ? getColor(conn.conference).primary : inactiveStroke}
                   strokeWidth={isHighlighted ? 1.5 + (conn.playerCount * 0.3) : 1}
-                  strokeOpacity={isHighlighted ? 0.7 : 0.2}
+                  strokeOpacity={isHighlighted ? 0.7 : 0.25}
                   strokeLinecap="round"
                   className="pipeline-line"
                   style={{ animationDelay: `${i * 50}ms` }}
@@ -555,7 +577,11 @@ function AdvancedHeatMap({ filters = {} }) {
                     <circle
                       className="marker-core"
                       r={size}
-                      style={viewMode === 'pipelines' ? { fill: isHighlighted ? '#ffffff' : '#4a5568' } : {}}
+                      style={viewMode === 'pipelines' ? {
+                        fill: isHighlighted
+                          ? (isDarkMode ? '#ffffff' : color.primary)
+                          : (isDarkMode ? '#4a5568' : '#9CA3AF')
+                      } : {}}
                     />
                     {/* Logo only in schools view */}
                     {showLogo ? (

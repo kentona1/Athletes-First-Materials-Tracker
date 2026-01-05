@@ -1,0 +1,522 @@
+/* ========================================
+   POSITION MANAGER - ESPN MAGAZINE EDITORIAL STYLE
+   Tool for normalizing player positions
+   ======================================== */
+
+.position-manager {
+  animation: fadeIn 0.4s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.position-manager .page-header {
+  margin-bottom: var(--space-xl);
+}
+
+.position-manager .page-header h2 {
+  font-family: var(--font-display);
+  font-size: 2rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--text-primary);
+  text-transform: uppercase;
+  margin-bottom: var(--space-xs);
+}
+
+.position-manager .subtitle {
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  color: var(--text-tertiary);
+  margin: 0;
+}
+
+/* ----------------------------------------
+   MESSAGE ALERTS
+   ---------------------------------------- */
+.message {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-md) var(--space-lg);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--space-lg);
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  font-weight: 500;
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.message.success {
+  background: var(--accent-green-soft);
+  color: var(--accent-green);
+  border: 1px solid var(--accent-green);
+}
+
+.message.error {
+  background: var(--status-not-signed-bg);
+  color: var(--status-not-signed);
+  border: 1px solid var(--status-not-signed);
+}
+
+.message .close-btn {
+  background: none;
+  border: none;
+  color: inherit;
+  font-size: 1.25rem;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+  opacity: 0.7;
+  transition: opacity var(--transition-fast);
+}
+
+.message .close-btn:hover {
+  opacity: 1;
+}
+
+/* ----------------------------------------
+   MAIN GRID LAYOUT
+   ---------------------------------------- */
+.position-manager-grid {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: var(--space-xl);
+  min-height: 600px;
+}
+
+/* ----------------------------------------
+   POSITIONS PANEL (LEFT)
+   ---------------------------------------- */
+.positions-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+}
+
+.panel-section {
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-card);
+}
+
+.section-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-md) var(--space-lg);
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  border-bottom: 2px solid var(--border-light);
+}
+
+.section-title.standard {
+  color: var(--accent-green);
+  background: var(--accent-green-soft);
+  border-bottom-color: var(--accent-green);
+}
+
+.section-title.non-standard {
+  color: var(--status-not-signed);
+  background: var(--status-not-signed-bg);
+  border-bottom-color: var(--status-not-signed);
+}
+
+.count-badge {
+  font-family: var(--font-body);
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: var(--space-xs) var(--space-sm);
+  border-radius: var(--radius-sm);
+  background: var(--bg-card);
+}
+
+.count-badge.warning {
+  background: var(--status-not-signed);
+  color: white;
+}
+
+.position-list {
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.position-list.non-standard {
+  max-height: 320px;
+}
+
+.position-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-sm) var(--space-lg);
+  cursor: pointer;
+  border-bottom: 1px solid var(--border-light);
+  transition: all var(--transition-fast);
+}
+
+.position-item:last-child {
+  border-bottom: none;
+}
+
+.position-item:hover {
+  background: var(--bg-card-hover);
+}
+
+.position-item.selected {
+  background: var(--accent-primary);
+  color: white;
+}
+
+.position-item.needs-fix {
+  border-left: 3px solid var(--status-not-signed);
+}
+
+.position-item.needs-fix.selected {
+  border-left-color: white;
+}
+
+.position-name {
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.position-count {
+  font-family: var(--font-display);
+  font-size: 0.9rem;
+  font-weight: 700;
+  opacity: 0.7;
+}
+
+.position-item.selected .position-count {
+  opacity: 1;
+}
+
+.empty-state {
+  padding: var(--space-xl);
+  text-align: center;
+  color: var(--accent-green);
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+/* ----------------------------------------
+   PLAYERS PANEL (RIGHT)
+   ---------------------------------------- */
+.players-panel {
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  display: flex;
+  flex-direction: column;
+  box-shadow: var(--shadow-card);
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-lg);
+  border-bottom: 2px solid var(--accent-primary);
+}
+
+.panel-header h3 {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.panel-header .highlight {
+  color: var(--accent-primary);
+}
+
+.player-count {
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  background: var(--bg-tertiary);
+  padding: var(--space-xs) var(--space-sm);
+  border-radius: var(--radius-sm);
+}
+
+/* ----------------------------------------
+   QUICK ACTIONS
+   ---------------------------------------- */
+.quick-actions {
+  padding: var(--space-lg);
+  background: var(--bg-tertiary);
+  border-bottom: 1px solid var(--border-light);
+}
+
+.action-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  margin-bottom: var(--space-md);
+}
+
+.action-row label {
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-tertiary);
+  white-space: nowrap;
+}
+
+.position-select {
+  flex: 1;
+  padding: var(--space-sm) var(--space-md);
+  background: var(--bg-card);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-md);
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.position-select:focus {
+  outline: none;
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+}
+
+.action-buttons {
+  display: flex;
+  gap: var(--space-sm);
+}
+
+.action-buttons .btn {
+  flex: 1;
+  padding: var(--space-sm) var(--space-md);
+  font-size: 0.8rem;
+}
+
+/* ----------------------------------------
+   PLAYER LIST
+   ---------------------------------------- */
+.player-list-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.select-all-row {
+  padding: var(--space-md) var(--space-lg);
+  border-bottom: 1px solid var(--border-light);
+  background: var(--bg-secondary);
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  cursor: pointer;
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.checkbox-label input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent-primary);
+  cursor: pointer;
+}
+
+.player-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-sm) 0;
+}
+
+.player-item {
+  padding: var(--space-sm) var(--space-lg);
+  border-bottom: 1px solid var(--border-light);
+  transition: background var(--transition-fast);
+}
+
+.player-item:hover {
+  background: var(--bg-card-hover);
+}
+
+.player-item.selected {
+  background: var(--accent-glow);
+}
+
+.player-item .checkbox-label {
+  width: 100%;
+}
+
+.player-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+}
+
+.player-name {
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+
+.player-name:hover {
+  color: var(--accent-primary);
+}
+
+.player-school {
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  color: var(--text-tertiary);
+}
+
+.loading-inline {
+  padding: var(--space-xl);
+  text-align: center;
+  color: var(--text-tertiary);
+  font-family: var(--font-body);
+}
+
+/* ----------------------------------------
+   EMPTY PANEL STATE
+   ---------------------------------------- */
+.empty-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-3xl);
+  text-align: center;
+  flex: 1;
+}
+
+.empty-icon {
+  font-size: 4rem;
+  margin-bottom: var(--space-lg);
+  opacity: 0.3;
+}
+
+.empty-panel h3 {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: var(--space-sm);
+}
+
+.empty-panel p {
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  color: var(--text-tertiary);
+  margin: 0 0 var(--space-sm) 0;
+  max-width: 300px;
+}
+
+.empty-panel .tip {
+  font-size: 0.8rem;
+  color: var(--status-not-signed);
+  font-style: italic;
+}
+
+/* ----------------------------------------
+   SCROLLBAR STYLING
+   ---------------------------------------- */
+.position-list::-webkit-scrollbar,
+.player-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.position-list::-webkit-scrollbar-track,
+.player-list::-webkit-scrollbar-track {
+  background: var(--bg-tertiary);
+}
+
+.position-list::-webkit-scrollbar-thumb,
+.player-list::-webkit-scrollbar-thumb {
+  background: var(--text-muted);
+  border-radius: 3px;
+}
+
+.position-list::-webkit-scrollbar-thumb:hover,
+.player-list::-webkit-scrollbar-thumb:hover {
+  background: var(--text-tertiary);
+}
+
+/* ----------------------------------------
+   RESPONSIVE DESIGN
+   ---------------------------------------- */
+@media (max-width: 968px) {
+  .position-manager-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .positions-panel {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .panel-section {
+    flex: 1;
+    min-width: 280px;
+  }
+
+  .position-list,
+  .position-list.non-standard {
+    max-height: 200px;
+  }
+}
+
+@media (max-width: 576px) {
+  .position-manager .page-header h2 {
+    font-size: 1.5rem;
+  }
+
+  .panel-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-sm);
+  }
+
+  .action-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .action-buttons {
+    flex-direction: column;
+  }
+}

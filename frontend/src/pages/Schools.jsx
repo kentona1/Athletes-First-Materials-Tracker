@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { Link } from 'react-router-dom';
 import axios from '../api/axios';
 import './Schools.css';
 
@@ -112,10 +113,15 @@ function Schools() {
   return (
     <div className="schools-container">
       <div className="schools-header">
-        <h1>Schools Management</h1>
-        <p className="schools-subtitle">
-          Manage school data and conference assignments
-        </p>
+        <div className="schools-header-left">
+          <h1>Schools Management</h1>
+          <p className="schools-subtitle">
+            Manage school data and conference assignments
+          </p>
+        </div>
+        <Link to="/schools/cleanup" className="btn btn-primary cleanup-link">
+          School Name Cleanup
+        </Link>
       </div>
 
       <div className="schools-controls">

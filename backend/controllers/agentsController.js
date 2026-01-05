@@ -190,15 +190,15 @@ class AgentsController {
         SELECT
           a.id as agent_id,
           a.name as agent,
+          a.first_name,
+          a.last_name,
           COUNT(DISTINCT pa.player_id) as total_players,
           COUNT(DISTINCT CASE WHEN po.status = 'Signed' THEN pa.player_id END) as signed,
-          COUNT(DISTINCT CASE WHEN po.status = 'Missed' THEN pa.player_id END) as missed,
-          COUNT(DISTINCT CASE WHEN po.status = 'Walked Away' THEN pa.player_id END) as walked_away,
+          COUNT(DISTINCT CASE WHEN po.status IN ('Not Signed', 'Missed', 'Walked Away', 'No Meeting') THEN pa.player_id END) as not_signed,
           COUNT(DISTINCT CASE WHEN po.status = 'Returned to School' THEN pa.player_id END) as returned,
-          COUNT(DISTINCT CASE WHEN po.status = 'No Meeting' THEN pa.player_id END) as no_meeting,
           COUNT(DISTINCT pm.id) as total_materials,
           ROUND(
-            CAST(COUNT(DISTINCT CASE WHEN po.status = 'Signed' THEN pa.player_id END) AS FLOAT) / 
+            CAST(COUNT(DISTINCT CASE WHEN po.status = 'Signed' THEN pa.player_id END) AS FLOAT) /
             NULLIF(COUNT(DISTINCT pa.player_id), 0) * 100, 2
           ) as conversion_rate
         FROM agents a
@@ -216,7 +216,7 @@ class AgentsController {
         params.push(year);
       }
 
-      sql += ' GROUP BY a.id ORDER BY signed DESC';
+      sql += ' GROUP BY a.id ORDER BY a.last_name, a.first_name, a.name';
 
       const performance = await db.query(sql, params);
 

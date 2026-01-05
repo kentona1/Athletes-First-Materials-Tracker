@@ -1,96 +1,518 @@
+/* ========================================
+   PLAYERS LIST - ESPN MAGAZINE EDITORIAL STYLE
+   Clean, scannable roster presentation
+   ======================================== */
+
 .players-list {
-  background: white;
-  padding: 2rem;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-xl);
+  padding: var(--space-xl);
+  animation: fadeIn 0.4s ease-out;
+  box-shadow: var(--shadow-card);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* ----------------------------------------
+   HEADER SECTION
+   ---------------------------------------- */
+.players-list .page-header {
+  margin-bottom: var(--space-xl);
+  padding-bottom: var(--space-lg);
+  border-bottom: 1px solid var(--border-light);
+}
+
+.players-list .page-header h2 {
+  font-family: var(--font-display);
+  font-size: 2rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--text-primary);
+  text-transform: uppercase;
+}
+
+.players-list .page-header h2::before {
+  display: none;
 }
 
 .players-list .header-actions {
   display: flex;
-  gap: 1rem;
+  gap: var(--space-md);
 }
 
+/* ----------------------------------------
+   FILTERS SECTION
+   ---------------------------------------- */
 .filters-section {
   display: flex;
-  gap: 1rem;
-  margin-bottom: 1.5rem;
+  gap: var(--space-md);
+  margin-bottom: var(--space-lg);
   flex-wrap: wrap;
+  align-items: center;
+  padding: var(--space-lg);
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-light);
 }
 
 .search-input {
   flex: 2;
-  min-width: 250px;
-  padding: 0.75rem;
-  border: 1px solid #ced4da;
-  border-radius: 4px;
-  font-size: 1rem;
+  min-width: 280px;
+  padding: var(--space-md) var(--space-lg);
+  background: var(--bg-card);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-md);
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  color: var(--text-primary);
+  transition: all var(--transition-fast);
+}
+
+.search-input::placeholder {
+  color: var(--text-muted);
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: var(--accent-primary);
+  background: var(--bg-secondary);
+  box-shadow: 0 0 0 3px var(--accent-glow);
 }
 
 .filter-select {
   flex: 1;
-  min-width: 150px;
-  padding: 0.75rem;
-  border: 1px solid #ced4da;
-  border-radius: 4px;
-  font-size: 1rem;
-  background-color: white;
+  min-width: 140px;
+  padding: var(--space-md);
+  background: var(--bg-card);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-md);
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23767676' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 36px;
 }
 
+.filter-select:focus {
+  outline: none;
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+}
+
+.filter-select:hover {
+  border-color: var(--border-dark);
+}
+
+/* ----------------------------------------
+   SORT TOGGLE
+   ---------------------------------------- */
 .sort-toggle {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: var(--space-sm);
   margin-left: auto;
+  padding-left: var(--space-md);
+  border-left: 1px solid var(--border-light);
 }
 
 .sort-label {
-  color: #6c757d;
-  font-size: 0.875rem;
+  font-family: var(--font-body);
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-tertiary);
   white-space: nowrap;
 }
 
 .sort-btn {
-  padding: 0.5rem 0.75rem;
-  border: 1px solid #ced4da;
-  background: white;
-  border-radius: 4px;
+  padding: var(--space-sm) var(--space-md);
+  border: 1px solid var(--border-medium);
+  background: var(--bg-card);
+  border-radius: var(--radius-sm);
   cursor: pointer;
-  font-size: 0.875rem;
-  transition: all 0.2s;
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-secondary);
+  transition: all var(--transition-fast);
 }
 
 .sort-btn:hover {
-  background: #f8f9fa;
+  background: var(--bg-card-hover);
+  border-color: var(--border-dark);
+  color: var(--text-primary);
 }
 
 .sort-btn.active {
-  background: #0d6efd;
+  background: var(--accent-primary);
   color: white;
-  border-color: #0d6efd;
+  border-color: var(--accent-primary);
 }
 
+/* ----------------------------------------
+   PLAYERS COUNT
+   ---------------------------------------- */
 .players-count {
-  margin-bottom: 1rem;
-  color: #6c757d;
-  font-size: 0.875rem;
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-tertiary);
+  margin-bottom: var(--space-md);
+  padding-left: var(--space-sm);
 }
 
+.players-count::before {
+  content: '';
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  background: var(--accent-primary);
+  border-radius: 50%;
+  margin-right: var(--space-sm);
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* ----------------------------------------
+   TABLE CONTAINER
+   ---------------------------------------- */
+.players-table {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.players-table table {
+  min-width: 900px;
+  border-radius: var(--radius-lg);
+}
+
+.players-table thead th {
+  background: var(--bg-tertiary);
+  border-bottom: 2px solid var(--accent-primary);
+}
+
+.players-table tbody tr {
+  animation: rowSlideIn 0.3s ease-out both;
+}
+
+@keyframes rowSlideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Stagger row animations */
+.players-table tbody tr:nth-child(1) { animation-delay: 0.02s; }
+.players-table tbody tr:nth-child(2) { animation-delay: 0.04s; }
+.players-table tbody tr:nth-child(3) { animation-delay: 0.06s; }
+.players-table tbody tr:nth-child(4) { animation-delay: 0.08s; }
+.players-table tbody tr:nth-child(5) { animation-delay: 0.1s; }
+.players-table tbody tr:nth-child(n+6) { animation-delay: 0.12s; }
+
+.players-table tbody tr:hover {
+  background: var(--bg-card-hover);
+}
+
+.players-table tbody tr:hover td:first-child {
+  color: var(--accent-primary);
+}
+
+/* Player name link */
+.players-table .player-link {
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--text-primary);
+  transition: color var(--transition-fast);
+}
+
+.players-table .player-link:hover {
+  color: var(--accent-primary);
+  text-decoration: none;
+}
+
+/* View button */
+.players-table .btn-small {
+  padding: var(--space-xs) var(--space-md);
+  font-size: 0.7rem;
+}
+
+/* ----------------------------------------
+   NO RESULTS STATE
+   ---------------------------------------- */
 .no-results {
   text-align: center;
-  padding: 3rem;
+  padding: var(--space-3xl) var(--space-xl);
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-lg);
+  margin-top: var(--space-lg);
 }
 
 .no-results p {
-  margin-bottom: 1rem;
-  color: #6c757d;
+  font-family: var(--font-body);
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  margin-bottom: var(--space-lg);
 }
 
-@media (max-width: 768px) {
+.no-results .btn {
+  margin-top: var(--space-md);
+}
+
+/* ----------------------------------------
+   PAGINATION
+   ---------------------------------------- */
+.pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: var(--space-sm);
+  margin-top: var(--space-xl);
+  padding-top: var(--space-lg);
+  border-top: 1px solid var(--border-light);
+}
+
+.pagination-btn {
+  padding: var(--space-sm) var(--space-md);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.pagination-btn:hover:not(:disabled) {
+  background: var(--bg-card-hover);
+  border-color: var(--border-dark);
+  color: var(--text-primary);
+}
+
+.pagination-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.pagination-numbers {
+  display: flex;
+  gap: var(--space-xs);
+}
+
+.pagination-num {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-card);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-display);
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.pagination-num:hover {
+  background: var(--bg-card-hover);
+  border-color: var(--border-dark);
+  color: var(--text-primary);
+}
+
+.pagination-num.active {
+  background: var(--accent-primary);
+  border-color: var(--accent-primary);
+  color: white;
+}
+
+.pagination-info {
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-tertiary);
+  margin-left: var(--space-md);
+  padding-left: var(--space-md);
+  border-left: 1px solid var(--border-light);
+  white-space: nowrap;
+}
+
+/* ----------------------------------------
+   RESPONSIVE DESIGN
+   ---------------------------------------- */
+@media (max-width: 1200px) {
   .filters-section {
+    gap: var(--space-sm);
+  }
+
+  .search-input {
+    min-width: 200px;
+  }
+
+  .filter-select {
+    min-width: 120px;
+  }
+}
+
+@media (max-width: 968px) {
+  .players-list {
+    padding: var(--space-lg);
+  }
+
+  .filters-section {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .search-input,
+  .filter-select {
+    width: 100%;
+    min-width: unset;
+  }
+
+  .sort-toggle {
+    margin-left: 0;
+    padding-left: 0;
+    border-left: none;
+    padding-top: var(--space-md);
+    border-top: 1px solid var(--border-light);
+    justify-content: center;
+  }
+
+  .players-list .header-actions {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+}
+
+@media (max-width: 576px) {
+  .players-list {
+    padding: var(--space-md);
+    border-radius: var(--radius-lg);
+  }
+
+  .players-list .page-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-md);
+  }
+
+  .players-list .page-header h2 {
+    font-size: 1.5rem;
+  }
+
+  .players-list .header-actions {
+    width: 100%;
     flex-direction: column;
   }
 
-  .search-input, .filter-select {
+  .players-list .header-actions .btn {
     width: 100%;
+    justify-content: center;
   }
+
+  .filters-section {
+    padding: var(--space-md);
+    gap: var(--space-sm);
+  }
+
+  .filter-select {
+    padding: var(--space-sm) var(--space-md);
+    font-size: 0.75rem;
+  }
+
+  .sort-btn {
+    padding: var(--space-xs) var(--space-sm);
+    font-size: 0.7rem;
+  }
+
+  .players-count {
+    font-size: 0.7rem;
+    text-align: center;
+  }
+
+  .no-results {
+    padding: var(--space-xl);
+  }
+
+  .pagination {
+    flex-wrap: wrap;
+    gap: var(--space-sm);
+  }
+
+  .pagination-info {
+    width: 100%;
+    text-align: center;
+    margin-left: 0;
+    padding-left: 0;
+    border-left: none;
+    margin-top: var(--space-sm);
+    padding-top: var(--space-sm);
+    border-top: 1px solid var(--border-light);
+  }
+
+  .pagination-btn {
+    padding: var(--space-xs) var(--space-sm);
+    font-size: 0.7rem;
+  }
+
+  .pagination-num {
+    width: 32px;
+    height: 32px;
+    font-size: 0.8rem;
+  }
+}
+
+/* ----------------------------------------
+   SCROLLBAR FOR TABLE
+   ---------------------------------------- */
+.players-table::-webkit-scrollbar {
+  height: 6px;
+}
+
+.players-table::-webkit-scrollbar-track {
+  background: var(--bg-tertiary);
+  border-radius: 3px;
+}
+
+.players-table::-webkit-scrollbar-thumb {
+  background: var(--text-muted);
+  border-radius: 3px;
+}
+
+.players-table::-webkit-scrollbar-thumb:hover {
+  background: var(--text-tertiary);
 }
